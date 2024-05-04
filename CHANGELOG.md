@@ -1,13 +1,109 @@
 CloudCompare Version History
 ============================
-
-v2.13.beta (???) - (??/??/2024)
+v2.14.alpha (???) - (??/??/202?)
 ----------------------
-- - New features:
+
+New Feature:
+	- Edit > Color > Gaussian filter
+	- Edit > Color > Bilateral filter
+	- Edit > Color > Median filter
+	- Edit > Color > Mean filter
+		- to improve coloring by applying a color filter
+
+	- New Command line options
+		- New command -FILTER -RGB -SF {-MEAN|-MEDIAN|GAUSSIAN|BILATERAL} -SIGMA {sigma} -SIGMA_SF {sigma_sf} -BURNT_COLOR_THRESHOLD {burnt_color_threshold} -BLEND_GRAYSCALE {grayscale_threshold} {grayscale_percent}
+			- command arguments with a dash can be in any order
+			- -RGB runs the filter on color
+			- -SF runs the filter on the active scalar field
+			- -RGB and -SF can be used at the same time, otherwise at least one of the 2 options is required
+			- -MEAN|-MEDIAN|GAUSSIAN|BILATERAL
+				- specifies the filtering algorithm to use
+				- required
+				- only one should be set (However, if multiple are passed, only the first one will be used)
+			- -BURNT_COLOR_THRESHOLD {burnt_color_threshold}
+				- discards points for calculations if their R,G,B values are out of the [brunt_color_threshold;255-burnt_color_threshold] range.
+				- {burnt_color_threshold} is an integer between 0 and 255
+				- default value is 0, so all points are used
+				- optional
+				- only used when the filter is applied to RGB colors
+			- -BLEND_GRAYSCALE {grayscale_threshold} {grayscale_percent}
+				- if the set of neighbors around each point contains more than {grayscale_percent}% of grayscale colors, only grayscale colors will be used.
+				- a color is considered as 'gray' when (R + G + B) / 3 - {grayscale_threshold} <= [R,G,B] <= (R + G + B) / 3 + {grayscale_threshold}
+				- {grayscale_threshold} is a strictly positive integer (HINT: use a small value between 1 and 10)
+				- {grayscale_percent} is an integer between 0 and 100 to decide when to consider colors as grayscale instead of RGB
+				- optional
+				- only used when the filter is applied to RGB colors
+			- -SIGMA {sigma}
+					- optional
+					- nearest neighbours extracted with a radius of 3*sigma. If not set, CloudCompare will calculate a default value.
+			- -SIGMA_SF {sigma_sf}
+					- optional, only used when bilateral filter applied
+		- New SF_OP suboption: -NOT_IN_PLACE
+			- to create new scalar field during the operation.
+
+Improvements:
+	- Command line:
+		- the -SF_OP command now supports MIN/DISP_MIN/SAT_MIN/N_SIGMA_MIN/MAX/DISP_MAX/SAT_MAX/N_SIGMA_MAX as input values
+		- Rename -CSF command's resulting clouds to be able to select them later:
+			- {original cloud name} + '_ground_points'
+			- {original cloud name} + '_offground_points'
+
+v2.13.1 (Kharkiv) - (03/20/2024)
+----------------------
+Improvements:
+	- the Facets plugin will now retain the Global Shift information when extracting facets, and the 'Global center' will
+		also be exported when exporting facets info to CSV or SHP files
+
+	- the Compass plugin will now warn the user if a wrong entity is picked
+
+	- the 'Edit > Tools > Apply transformation' dialog accuracy has been improved (so as to properly handle small rotation angles)
+
+	- It is now possible to save clouds (points and normals) as an OBJ file
+
+	- the 'Tools > Distances > Cloud/Mesh distances' tool will now use a smarter algorithm to avoid edge cases
+		when determining the sign of the distance.
+		- the dialog has a new 'robust' option (enabled by default) to control whether this new algorithm should be used,
+			or if the old algorithm should be used.
+		- the ICP tool dialog also has a 'robust' option (Research tab) to control this behavior when using C2M distances
+		- new command line option -NON_ROBUST to force the old behavior for both the C2M distances computation and the ICP
+			tools (see below)
+
+	- Command line options
+		- New suboption for the -C2M_DIST command line option:
+			- -NON_ROBUST to disable the robust signed C2M distances computation algorithm (old behavior)
+		- New suboptions for the -ICP command line option:
+			- -USE_C2M_DIST to force the computation of Cloud/Mesh distances (only if the reference entity is a mesh)
+			- -NON_ROBUST to disable the robust signed C2M distances computation algorithm (old behavior)
+			- -NORMAL_MATCH {OPTION} to specify the normals matching mode (no normal matching is used by default).
+				{OPTION} can be OPPOSITE, SAME_SIDE or DOUBLE_SIDED
+
+	- The 3DFin plugin version has been bumped to 0.3.3
+
+Bug fixes:
+	- CSF: the multi-threading strategy could cause artefacts in the cloth simulation, leading to suboptimal results
+	- CSF: the acceleration component was wrongly multiplied twice by the square time increment, requiring much more
+		iterations for the algorithm to converge
+	- 3DMASC: when using a test cloud, the process was automatically terminated as if the user had clicked on the
+		'cancel' button
+	- The DotPorduct (DP) file I/O filter was not able to load files with non latin characters. It was also wrongly
+		reporting its ability to export files while it is no longer the case.
+	- Upgrading the DotProduct SDK to version 5.2 to avoid crashes when loading some DP files
+	- The -EXTRACT_CC command line option could overwrite the automatically saved component clouds if multiple clouds were
+		originating from the same file. Now the component filenames will contain the cloud name and index in the file to
+		make sure they are unique.
+	- The Global Shift information was not always saved when exporting to the PCD format
+	- When refusing to change the Global Shift & Scale information after applying a transformation, the Global Shift & Scale
+		information could be reset
+	- When changing values in the Apply Transformation tool, a chain of events/updates could lead to a strange behavior
+		of the dialog
+
+v2.13.0 (Kharkiv) - (02/14/2024)
+----------------------
+- New features:
 
 	- New menu entry: Save project
 		- File > Save project (or CTRL+SHIFT+S)
-		- Saves all entitites in the DB as a bin file
+		- Saves all entities in the DB as a bin file
 
 	- Tools > Fit > circle
 		- fits a 2D circle on a 3D point cloud (thanks to https://github.com/truebelief)
@@ -27,7 +123,7 @@ v2.13.beta (???) - (??/??/2024)
 	
 	- New display feature: near and far clipping planes in 3D views
 		- extension of the previously existing feature to set a near clipping plane
-		- can be enabled and modifed in the Camera Parameters dialog or via
+		- can be enabled and modified in the Camera Parameters dialog or via
 			CTRL + mouse wheel (near) or CTRL + SHIFT + mouse wheel (far)
 		- the user shall now input actual distances and not percentages
 		- works for all projection modes (orthographic and perspective)
@@ -94,7 +190,7 @@ v2.13.beta (???) - (??/??/2024)
 			- band can be any mix of 'R', 'G' and 'B' (ex: 'G' or 'RB' or 'RGB')
 			- selected color component values will be scaled so that
 				[INPUT_RANGE_MIN INPUT_RANGE_MAX] becomes [OUTPUT_RANGE_MIN OUTPUT_RANGE_MAX]
-				(values ouside of the input range will also be scaled)
+				(values outside of the input range will also be scaled)
     - RDP {opt: min distance between points}
     	- removes duplicate points of all loaded clouds
 		- the min distance between points to consider them as duplicated can be set (1e-8 by default)
@@ -133,8 +229,8 @@ v2.13.beta (???) - (??/??/2024)
 		- it is possible to use FIRST and LAST at the same time. Example: xx...xx
 	- REMOVE_SENSORS
 		- removes all the sensors (both TLS and cameras, directly under clouds, meshes or mesh vertices)
-	- VERBOSITY [0-3] to set verbosity level (0 standard or higher, 1 debug or higher, 2 warning or higher,3 only error)
-		- to hide plugin messages it should be the first argument even before -SILENT, in this case -SILENT can be the second argument.
+	- VERBOSITY [0-4] to set verbosity level (0: verbose, 1: standard, 2: important, 3: warnings and errors only, 4: errors only)
+		- to hide plugin loading logs, it should be set as first argument (even before -SILENT, in which case -SILENT can be the second argument)
 
 - Improvements:
 
@@ -158,14 +254,14 @@ v2.13.beta (???) - (??/??/2024)
 	- Tools > Projection > Unroll
 		- it is now possible to set any 3D axis for the cylinder or the cone
 		- the cone projection type is now set in a separate combo-box to make things clearer
-		- cone projection methods are 'Conical', 'Cylidrical (fixed radius)' and 'Cylidrical (adaptive radius)'
+		- cone projection methods are 'Conical', 'Cylindrical (fixed radius)' and 'Cylindrical (adaptive radius)'
 		- the conical projection method now takes an additional 'span ratio' parameter as input (to reduce or increase the conical projection angular span)
 		- button to flip the 3D axis
 		- ability to paste the axis and the axis point from the clipboard (3 numerical values separated by whitespaces, commas or semicolons)
 		- option to choose an existing cylinder or cone entity in the DB tree, and use it to set the unrolling parameters
 		- option to output the unrolled cloud in an arbitrary coordinate system (X: unroll angle / Y = distance to primitive / Z = longitude)
 		
-	- Edit > Apply Tranformation
+	- Edit > Apply Transformation
 		- new shortcut buttons to set the rotation axis to I(1,0,0), J(0,1,0) or K(0,0,1)
 		- new option (checkbox): 'Apply to global coordinates'
 			- this allows to apply the transformation matrix to the original Global coordinates instead of the local ones.
@@ -178,7 +274,7 @@ v2.13.beta (???) - (??/??/2024)
 		- when using a negative scale on a point cloud, the normals will now be inverted accordingly
 
 	- Edit > Waveform > 2D Waveform viewer
-		- the point which waveform is edited is now spoted in the 3D view and information is displayed as in with the pickin tool
+		- the point which waveform is edited is now spotted in the 3D view and information is displayed as in with the picking tool
 
 	- Multi-threading
 		- If possible, CC will now try to use less threads/cores than the maximum number, so as to let the application breath
@@ -262,10 +358,10 @@ v2.13.beta (???) - (??/??/2024)
 	- PCD files
 		- better management of PCD files with large coordinates (the Global Shift & Scale dialog will appear)
 		- at export time, if the previous sensor is too far from the points, it might not be saved to preserve numerical accuracy
-			(the previous sensor will be replaced by a default one positionned accordingly to the Global shift)
+			(the previous sensor will be replaced by a default one positioned accordingly to the Global shift)
 
 	- STP files
-		- the triangles of meshes tesselated from STEP files should now all be properly oriented
+		- the triangles of meshes tessellated from STEP files should now all be properly oriented
 		- the linear deflection is asked only once when multiple files are loaded at the same time
 
 	- PLY files
@@ -279,7 +375,7 @@ v2.13.beta (???) - (??/??/2024)
 		- new operation: 'MIN' (to get the minimum values between 2 scalar fields)
 		- new operation: 'MAX' (to get the maximum values between 2 scalar fields)
 		- new operation: 'SET' (to set a constant value)
-		- new operation: 'ABS' (to compute the absolue value)
+		- new operation: 'ABS' (to compute the absolute value)
 
 	- Command line
 		- logging should be more responsive (both in the standard console-based mode and the silent mode)
@@ -324,7 +420,7 @@ v2.13.beta (???) - (??/??/2024)
 		    - -EMPTY_FILL KRIGING
 			- -KRIGING_KNN {value}
 				- to set the number of neighbors for the Kriging algorithm
-			- to be used adter -PROJ or -SF_PROJ
+			- to be used after -PROJ or -SF_PROJ
 				- MED 
 				- INV_VAR (+ std. dev. SF index or name)
 
@@ -402,7 +498,7 @@ v2.13.beta (???) - (??/??/2024)
 		- the dialog is similar to the 'Set SF(s) as normal' tool
 
 - Bug fixes:
-	- PCD: when transforming a cloud with a sensor (either manually, or via a registration tool, or via Edit > Apply Tranformation) and then exporting
+	- PCD: when transforming a cloud with a sensor (either manually, or via a registration tool, or via Edit > Apply Transformation) and then exporting
 		the cloud to a PCD file, both the points AND the sensor were transformed, resulting in the PCD file coordinates to be in the wrong coordinate
 		system (as if the transformation had been applied twice)
 	- The QTextStream::pos method is slow and unreliable. This could cause some issue when loading ASCII files.
@@ -436,7 +532,7 @@ v2.13.beta (???) - (??/??/2024)
 	- The command line -FEATURE now changes the cloud name so that if it is saved with -SAVE_CLOUDS later it will not overwrite the original cloud 
 	- The Point Pair registration ('Align') or ICP tools could generate a sub-optimal translation if the rotation was constrained
 	- The C2M distance could crash if forcing the octree level above 11 or 12 (which would likely require a grid of more than 2 billion cells)
-	- Translating or rotating the cloud while the LoD structure was built could lead to a hang or a crash of CC
+	- Translating or rotating the cloud while the LoD structure was being built could lead to a hang or a crash of CC
 
 v2.12.4 (Kyiv) - (14/07/2022)
 ----------------------

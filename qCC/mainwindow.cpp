@@ -525,6 +525,10 @@ void MainWindow::connectActions()
 	connect(m_UI->actionClearColor,					&QAction::triggered, this, [=]() {
 		clearSelectedEntitiesProperty( ccEntityAction::CLEAR_PROPERTY::COLORS );
 	});
+	connect(m_UI->actionRGBGaussianFilter,			&QAction::triggered, this, &MainWindow::doActionRGBGaussianFilter);
+	connect(m_UI->actionRGBBilateralFilter,			&QAction::triggered, this, &MainWindow::doActionRGBBilateralFilter);
+	connect(m_UI->actionRGBMeanFilter,				&QAction::triggered, this, &MainWindow::doActionRGBMeanFilter);
+	connect(m_UI->actionRGBMedianFilter,			&QAction::triggered, this, &MainWindow::doActionRGBMedianFilter);
 
 	//"Edit > Normals" menu
 	connect(m_UI->actionComputeNormals,				&QAction::triggered, this, &MainWindow::doActionComputeNormals);
@@ -1110,7 +1114,7 @@ void MainWindow::applyTransformation(const ccGLMatrixd& mat, bool applyToGlobal)
 	double previousScale = 1.0;
 	CCVector3d previousShift(0, 0, 0);
 
-	//we don't want any entity that would be the children of other selected entitiesmust backup 'm_selectedEntities' as removeObjectTemporarilyFromDBTree can modify it!
+	//we don't want any entity that would be the children of other selected entities
 	ccHObject::Container selectedEntities = getTopLevelSelectedEntities();
 
 	for (ccHObject* entity : selectedEntities) //warning, getSelectedEntites may change during this loop!
@@ -1125,8 +1129,22 @@ void MainWindow::applyTransformation(const ccGLMatrixd& mat, bool applyToGlobal)
 			double globalScale = shiftedEntity->getGlobalScale();
 
 			// we compute the impact to the local coordinate system without changing the
-			// actual Global Shift & Scale parameters (for now)
-			CCVector3d localTranslation = globalScale * (globalShift - transMat * globalShift + 2 * transMat.getTranslationAsVec3D());
+			// current Global Shift & Scale parameters (for now)
+			// Here is the formula, assuming:
+			// - the Global Shift is Ts
+			// - the Global scale is Sc
+			// - the transformation is (R, T)
+			// - the Global point coordinates Pg are derived from the local ones Pl with: Pg = Pl/Sc - Ts
+			// Therefore, Pg' = R * Pg + T
+			// i.e.       Pg' = R.(Pl/Sc - Ts) + T
+			// i.e.       Pg' = (R.Pl)/Sc - R.Ts + T
+			// i.e.       Pg' = (R.Pl)/Sc - R.Ts + T + Ts - Ts
+			// i.e.       Pg' = (R.Pl + Sc.[Ts - R.Ts + T])/Sc - Ts
+			// i.e.       Pl' = Sc.[Ts -R.Ts + T]
+			// i.e. the translation of the 'local' coordinate system is: Sc.[T + Ts - R.Ts]
+			CCVector3d rotatedGlobalShift = globalShift;
+			mat.applyRotation(rotatedGlobalShift);
+			CCVector3d localTranslation = globalScale * (globalShift - rotatedGlobalShift + mat.getTranslationAsVec3D());
 
 			// we switch to a local transformation matrix
 			transMat.setTranslation(localTranslation);
@@ -1175,6 +1193,7 @@ void MainWindow::applyTransformation(const ccGLMatrixd& mat, bool applyToGlobal)
 						//let's try to find better Global Shift and Scale values
 						CCVector3d newShift(0.0, 0.0, 0.0);
 						double newScale = 1.0;
+						bool updateShiftAndscale = false;
 
 						//should we try to use the previous Global Shift and Scale values?
 						if (autoApplyPreviousGlobalShiftAndScale)
@@ -1185,6 +1204,7 @@ void MainWindow::applyTransformation(const ccGLMatrixd& mat, bool applyToGlobal)
 								newScale = previousScale;
 								newShift = previousShift;
 								needShift = false;
+								updateShiftAndscale = true;
 							}
 						}
 
@@ -1223,10 +1243,10 @@ void MainWindow::applyTransformation(const ccGLMatrixd& mat, bool applyToGlobal)
 								}
 							}
 
-							//if not good solution found...
+							//if no good solution was found...
 							if (matchingIndex < 0)
 							{
-								//add "suggested" entry
+								//add a "suggested" entry
 								CCVector3d suggestedShift = ccGlobalShiftManager::BestShift(Pg);
 								double suggestedScale = ccGlobalShiftManager::BestScale(Dg);
 								matchingIndex = sasDlg.addShiftInfo(ccGlobalShiftManager::ShiftInfo(tr("Suggested"), suggestedShift, suggestedScale));
@@ -1238,6 +1258,7 @@ void MainWindow::applyTransformation(const ccGLMatrixd& mat, bool applyToGlobal)
 								newScale = sasDlg.getScale();
 								newShift = sasDlg.getShift();
 								needShift = false;
+								updateShiftAndscale = true;
 
 								//store the shift for next time!
 								ccGlobalShiftManager::StoreShift(newShift, newScale);
@@ -1254,24 +1275,31 @@ void MainWindow::applyTransformation(const ccGLMatrixd& mat, bool applyToGlobal)
 								ccLog::Warning(tr("[ApplyTransformation] Process cancelled by user"));
 								return;
 							}
+							else
+							{
+								// the user did not want to change the shift & scale
+							}
 						}
 
-						assert(!needShift);
-
-						//get the relative modification to existing global shift/scale info
-						assert(globalScale != 0);
-						double scaleChange = newScale / globalScale;
-						CCVector3d shiftChange = newShift - globalShift;
-
-						if (scaleChange != 1.0 || shiftChange.norm2() != 0)
+						if (updateShiftAndscale)
 						{
-							//apply translation as global shift
-							cloud->setGlobalShift(newShift);
-							cloud->setGlobalScale(newScale);
-							ccLog::Warning(tr("[ApplyTransformation] Cloud '%1' global shift/scale information has been updated: shift = (%2,%3,%4) / scale = %5").arg(cloud->getName()).arg(newShift.x).arg(newShift.y).arg(newShift.z).arg(newScale));
+							assert(!needShift);
 
-							transMat.scaleRotation(scaleChange);
-							transMat.setTranslation(transMat.getTranslationAsVec3D() + newScale * shiftChange);
+							//get the relative modification to existing global shift/scale info
+							assert(globalScale != 0);
+							double scaleChange = newScale / globalScale;
+							CCVector3d shiftChange = newShift - globalShift;
+
+							if (scaleChange != 1.0 || shiftChange.norm2() != 0)
+							{
+								//apply translation as global shift
+								cloud->setGlobalShift(newShift);
+								cloud->setGlobalScale(newScale);
+								ccLog::Warning(tr("[ApplyTransformation] Cloud '%1' global shift/scale information has been updated: shift = (%2,%3,%4) / scale = %5").arg(cloud->getName()).arg(newShift.x).arg(newShift.y).arg(newShift.z).arg(newScale));
+
+								transMat.scaleRotation(scaleChange);
+								transMat.setTranslation(transMat.getTranslationAsVec3D() + newScale * shiftChange);
+							}
 						}
 					}
 				}
@@ -1287,11 +1315,24 @@ void MainWindow::applyTransformation(const ccGLMatrixd& mat, bool applyToGlobal)
 		entity->applyGLTransformation_recursive();
 		entity->prepareDisplayForRefresh_recursive();
 		putObjectBackIntoDBTree(entity, objContext);
+
+		if (applyToGlobal)
+		{
+			ccLog::Print(tr("[ApplyTransformation] Transformation matrix applied to the local coordinates of %1:").arg(entity->getName()));
+			ccLog::Print(transMat.toString(12, ' ')); //full precision
+		}
 	}
 
-	ccLog::Print(tr("[ApplyTransformation] Applied transformation matrix:"));
+	if (!applyToGlobal)
+	{
+		ccLog::Print(tr("[ApplyTransformation] Applied transformation matrix:"));
+	}
+	else
+	{
+		ccLog::Print(tr("[ApplyTransformation] Global transformation matrix:"));
+	}
 	ccLog::Print(mat.toString(12, ' ')); //full precision
-	ccLog::Print(tr("Hint: copy it (CTRL+C) and apply it - or its inverse - on any entity with the 'Edit > Apply transformation' tool"));
+	ccLog::Print(tr("Hint: you can copy a transformation matrix (CTRL+C) and apply it - or its inverse - to another entity with the 'Edit > Apply transformation' tool"));
 
 	//reselect previously selected entities!
 	if (m_ccRoot)
@@ -3214,9 +3255,57 @@ void MainWindow::doActionSplitCloudUsingSF()
     updateUI();
 }
 
+
+void MainWindow::doActionRGBGaussianFilter()
+{
+	ccPointCloud::RgbFilterOptions(filterParams);
+	filterParams.filterType = ccPointCloud::RGB_FILTER_TYPES::GAUSSIAN;
+	if (!ccEntityAction::rgbGaussianFilter(m_selectedEntities, filterParams, this))
+		return;
+
+	refreshAll();
+	updateUI();
+}
+
+void MainWindow::doActionRGBBilateralFilter()
+{
+	ccPointCloud::RgbFilterOptions(filterParams);
+	filterParams.filterType = ccPointCloud::RGB_FILTER_TYPES::BILATERAL;
+	if (!ccEntityAction::rgbGaussianFilter(m_selectedEntities, filterParams, this))
+		return;
+
+	refreshAll();
+	updateUI();
+}
+
+void MainWindow::doActionRGBMeanFilter()
+{
+	ccPointCloud::RgbFilterOptions(filterParams);
+	filterParams.filterType = ccPointCloud::RGB_FILTER_TYPES::MEAN;
+	if (!ccEntityAction::rgbGaussianFilter(m_selectedEntities, filterParams, this))
+		return;
+
+	refreshAll();
+	updateUI();
+}
+
+void MainWindow::doActionRGBMedianFilter()
+{
+	ccPointCloud::RgbFilterOptions(filterParams);
+	filterParams.filterType = ccPointCloud::RGB_FILTER_TYPES::MEDIAN;
+	if (!ccEntityAction::rgbGaussianFilter(m_selectedEntities, filterParams, this))
+		return;
+
+	refreshAll();
+	updateUI();
+}
+
+
 void MainWindow::doActionSFGaussianFilter()
 {
-	if ( !ccEntityAction::sfGaussianFilter(m_selectedEntities, this) )
+	ccPointCloud::RgbFilterOptions(filterParams);
+	filterParams.filterType = ccPointCloud::RGB_FILTER_TYPES::GAUSSIAN;
+	if ( !ccEntityAction::sfGaussianFilter(m_selectedEntities, filterParams, this) )
 		return;
 
 	refreshAll();
@@ -3225,7 +3314,9 @@ void MainWindow::doActionSFGaussianFilter()
 
 void MainWindow::doActionSFBilateralFilter()
 {
-	if ( !ccEntityAction::sfBilateralFilter(m_selectedEntities, this) )
+	ccPointCloud::RgbFilterOptions(filterParams);
+	filterParams.filterType = ccPointCloud::RGB_FILTER_TYPES::BILATERAL;
+	if ( !ccEntityAction::sfGaussianFilter(m_selectedEntities, filterParams, this) )
 		return;
 
 	refreshAll();
@@ -3483,6 +3574,13 @@ void MainWindow::doActionMerge()
 		CCCoreLib::ScalarField* ocIndexSF = nullptr;
 		size_t cloudIndex = 0;
 
+		//compute total size of the final cloud
+		unsigned totalSize = 0;
+		for (size_t i = 0; i < clouds.size(); ++i)
+		{
+			totalSize += clouds[i]->size();
+		}
+
 		for (size_t i = 0; i < clouds.size(); ++i)
 		{
 			ccPointCloud* pc = clouds[i];
@@ -3493,6 +3591,13 @@ void MainWindow::doActionMerge()
 				//we still have to temporarily detach the first cloud, as it may undergo
 				//'severe' modifications (octree deletion, etc.) --> see ccPointCloud::operator +=
 				firstCloudContext = removeObjectTemporarilyFromDBTree(firstCloud);
+
+				//reserve the final required number of points
+				if (!firstCloud->reserve(totalSize))
+				{
+					ccConsole::Error(tr("Not enough memory!"));
+					break;
+				}
 
 				if (QMessageBox::question(this, tr("Original cloud index"), tr("Do you want to generate a scalar field with the original cloud index?")) == QMessageBox::Yes)
 				{
@@ -3518,7 +3623,7 @@ void MainWindow::doActionMerge()
 			{
 				unsigned countBefore = firstCloud->size();
 				unsigned countAdded = pc->size();
-				*firstCloud += pc;
+				firstCloud->append(pc, countBefore, false, false); //append without recalculating SF min/max
 
 				//success?
 				if (firstCloud->size() == countBefore + countAdded)
@@ -3553,9 +3658,17 @@ void MainWindow::doActionMerge()
 			}
 		}
 
+		//compute min and max once after all appends are done
+		if (firstCloud)
+		{
+			for (size_t i = 0; i<firstCloud->getNumberOfScalarFields(); i++)
+			{
+				firstCloud->getScalarField(i)->computeMinAndMax();
+			}
+		}
+
 		if (ocIndexSF)
 		{
-			ocIndexSF->computeMinAndMax();
 			firstCloud->showSF(true);
 		}
 
@@ -3684,7 +3797,7 @@ void MainWindow::doActionRegister()
 		parameters.finalOverlapRatio		= rDlg.getFinalOverlap() / 100.0;
 		parameters.transformationFilters	= rDlg.getTransformationFilters();
 		parameters.maxThreadCount			= rDlg.getMaxThreadCount();
-		parameters.useC2MSignedDistances	= rDlg.useC2MSignedDistances();
+		parameters.useC2MSignedDistances	= rDlg.useC2MSignedDistances(parameters.robustC2MSignedDistances);
 		parameters.normalsMatching			= rDlg.normalsMatchingOption();
 	}
 	bool useDataSFAsWeights		= rDlg.useDataSFAsWeights();
@@ -5686,7 +5799,7 @@ void MainWindow::doActionSORFilter()
 
 void MainWindow::doActionFilterNoise()
 {
-	PointCoordinateType kernelRadius = ccLibAlgorithms::GetDefaultCloudKernelSize(m_selectedEntities);
+	double kernelRadius = ccLibAlgorithms::GetDefaultCloudKernelSize(m_selectedEntities);
 
 	ccNoiseFilterDlg noiseDlg(this);
 
@@ -5715,7 +5828,7 @@ void MainWindow::doActionFilterNoise()
 		return;
 
 	//update semi-persistent/dynamic parameters
-	kernelRadius = static_cast<PointCoordinateType>(noiseDlg.radiusDoubleSpinBox->value());
+	kernelRadius = noiseDlg.radiusDoubleSpinBox->value();
 	s_noiseFilterUseKnn = noiseDlg.knnRadioButton->isChecked();
 	s_noiseFilterKnn = noiseDlg.knnSpinBox->value();
 	s_noiseFilterUseAbsError = noiseDlg.absErrorRadioButton->isChecked();
@@ -5743,7 +5856,7 @@ void MainWindow::doActionFilterNoise()
 
 		//computation
 		CCCoreLib::ReferenceCloud* selection = CCCoreLib::CloudSamplingTools::noiseFilter(	cloud,
-																							kernelRadius,
+																							static_cast<PointCoordinateType>(kernelRadius),
 																							s_noiseFilterNSigma,
 																							s_noiseFilterRemoveIsolatedPoints,
 																							s_noiseFilterUseKnn,
@@ -8391,7 +8504,7 @@ void MainWindow::doSphericalNeighbourhoodExtractionTest()
 		return;
 
 	//spherical neighborhood extraction radius
-	PointCoordinateType sphereRadius = ccLibAlgorithms::GetDefaultCloudKernelSize(m_selectedEntities);
+	double sphereRadius = ccLibAlgorithms::GetDefaultCloudKernelSize(m_selectedEntities);
 	if (sphereRadius < 0)
 	{
 		ccConsole::Error(tr("Invalid kernel size!"));
@@ -8399,10 +8512,10 @@ void MainWindow::doSphericalNeighbourhoodExtractionTest()
 	}
 
 	bool ok;
-	double val = QInputDialog::getDouble(this, tr("SNE test"), tr("Radius:"), static_cast<double>(sphereRadius), DBL_MIN, 1.0e9, 8, &ok);
+	double val = QInputDialog::getDouble(this, tr("SNE test"), tr("Radius:"), sphereRadius, DBL_MIN, 1.0e9, 8, &ok);
 	if (!ok)
 		return;
-	sphereRadius = static_cast<PointCoordinateType>(val);
+	sphereRadius = val;
 
 	QString sfName = tr("Spherical extraction test (%1)").arg(sphereRadius);
 
@@ -8448,7 +8561,7 @@ void MainWindow::doSphericalNeighbourhoodExtractionTest()
 		eTimer.start();
 
 		size_t extractedPoints = 0;
-		unsigned char level = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(sphereRadius);
+		unsigned char level = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(static_cast<PointCoordinateType>(sphereRadius));
 		std::random_device rd;   // non-deterministic generator
 		std::mt19937 gen(rd());  // to seed mersenne twister.
 		std::uniform_int_distribution<unsigned> dist(0, cloud->size() - 1);
@@ -8458,11 +8571,16 @@ void MainWindow::doSphericalNeighbourhoodExtractionTest()
 		{
 			unsigned randIndex = dist(gen);
 			CCCoreLib::DgmOctree::NeighboursSet neighbours;
-			octree->getPointsInSphericalNeighbourhood(*cloud->getPoint(randIndex), sphereRadius, neighbours, level);
+			octree->getPointsInSphericalNeighbourhood(	*cloud->getPoint(randIndex),
+														static_cast<PointCoordinateType>(sphereRadius),
+														neighbours,
+														level );
 			size_t neihgboursCount = neighbours.size();
 			extractedPoints += neihgboursCount;
 			for (size_t k = 0; k < neihgboursCount; ++k)
+			{
 				cloud->setPointScalarValue(neighbours[k].pointIndex, static_cast<ScalarType>(sqrt(neighbours[k].squareDistd)));
+			}
 		}
 		ccConsole::Print(tr("[SNE_TEST] Mean extraction time = %1 ms (radius = %2, mean (neighbours) = %3)").arg(eTimer.elapsed()).arg(sphereRadius).arg(extractedPoints / static_cast<double>(samples), 0, 'f', 1));
 
@@ -9107,7 +9225,7 @@ void MainWindow::doActionExportCloudInfo()
 					{
 						++validCount;
 						sfSum += val;
-						sfSum2 += val*val;
+						sfSum2 += static_cast<double>(val)*val;
 					}
 				}
 				csvStream << validCount << ';' /*"SF valid values;"*/;
@@ -11123,6 +11241,10 @@ void MainWindow::enableUIItems(dbTreeSelectionInfo& selInfo)
 	m_UI->actionClearColor->setEnabled(atLeastOneColor);
 	m_UI->actionRGBToGreyScale->setEnabled(atLeastOneColor);
 	m_UI->actionEnhanceRGBWithIntensities->setEnabled(atLeastOneColor);
+	m_UI->actionRGBGaussianFilter->setEnabled(atLeastOneColor);
+	m_UI->actionRGBBilateralFilter->setEnabled(atLeastOneColor);
+	m_UI->actionRGBMeanFilter->setEnabled(atLeastOneColor);
+	m_UI->actionRGBMedianFilter->setEnabled(atLeastOneColor);
 	m_UI->actionColorFromScalarField->setEnabled(atLeastOneSF);
 	// == 1
 	bool exactlyOneEntity = (selInfo.selCount == 1);
