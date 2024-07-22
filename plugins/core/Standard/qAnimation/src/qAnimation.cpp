@@ -1,86 +1,86 @@
-//##########################################################################
-//#                                                                        #
-//#                   CLOUDCOMPARE PLUGIN: qAnimation                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#             COPYRIGHT: Ryan Wicks, 2G Robotics Inc., 2015              #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                   CLOUDCOMPARE PLUGIN: qAnimation                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #             COPYRIGHT: Ryan Wicks, 2G Robotics Inc., 2015              #
+// #                                                                        #
+// ##########################################################################
 
 #include "qAnimation.h"
 
-//Local
-#include "qAnimationDlg.h"
+// Local
 #include "ExtendedViewport.h"
+#include "qAnimationDlg.h"
 
-//qCC_db
+// qCC_db
 #include <cc2DViewportObject.h>
-#include <ccPolyline.h>
 #include <ccPointCloud.h>
+#include <ccPolyline.h>
 
-//qCC_gl
+// qCC_gl
 #include <ccGLWindowInterface.h>
 
-//Qt
-#include <QtGui>
+// Qt
 #include <QMainWindow>
+#include <QtGui>
 
 typedef std::vector<ExtendedViewport> ViewPortList;
 
-static ViewPortList GetSelectedViewPorts( const ccHObject::Container &selectedEntities )
+static ViewPortList GetSelectedViewPorts(const ccHObject::Container& selectedEntities)
 {
 	ViewPortList viewports;
-	
-	for ( ccHObject *object : selectedEntities )
+
+	for (ccHObject* object : selectedEntities)
 	{
-		if ( object->getClassID() == static_cast<CC_CLASS_ENUM>(CC_TYPES::VIEWPORT_2D_OBJECT) )
+		if (object->getClassID() == static_cast<CC_CLASS_ENUM>(CC_TYPES::VIEWPORT_2D_OBJECT))
 		{
-			viewports.push_back( static_cast<cc2DViewportObject*>(object) );
+			viewports.push_back(static_cast<cc2DViewportObject*>(object));
 		}
 	}
-	
+
 	return viewports;
 }
 
 qAnimation::qAnimation(QObject* parent)
-	: QObject( parent )
-	, ccStdPluginInterface( ":/CC/plugin/qAnimation/info.json" )
-	, m_action( nullptr )
+    : QObject(parent)
+    , ccStdPluginInterface(":/CC/plugin/qAnimation/info.json")
+    , m_action(nullptr)
 {
 }
 
 void qAnimation::onNewSelection(const ccHObject::Container& selectedEntities)
 {
-	if ( m_action == nullptr )
+	if (m_action == nullptr)
 	{
 		return;
 	}
-	
-	ViewPortList viewports = GetSelectedViewPorts( selectedEntities );
-	
-	if ( viewports.size() >= 2 )
+
+	ViewPortList viewports = GetSelectedViewPorts(selectedEntities);
+
+	if (viewports.size() >= 2)
 	{
-		m_action->setEnabled( true );
-		m_action->setToolTip( getDescription() );
+		m_action->setEnabled(true);
+		m_action->setToolTip(getDescription());
 	}
 	else
 	{
-		m_action->setEnabled( false );
-		m_action->setToolTip( tr( "%1\nAt least 2 viewports must be selected.").arg( getDescription() ) );
+		m_action->setEnabled(false);
+		m_action->setToolTip(tr("%1\nAt least 2 viewports must be selected.").arg(getDescription()));
 	}
 }
 
-QList<QAction *> qAnimation::getActions()
+QList<QAction*> qAnimation::getActions()
 {
-	//default action (if it has not been already created, it's the moment to do it)
+	// default action (if it has not been already created, it's the moment to do it)
 	if (!m_action)
 	{
 		m_action = new QAction(getName(), this);
@@ -90,13 +90,13 @@ QList<QAction *> qAnimation::getActions()
 		connect(m_action, &QAction::triggered, this, &qAnimation::doAction);
 	}
 
-	return QList<QAction *>{ m_action };
+	return QList<QAction*>{m_action};
 }
 
-//what to do when clicked.
+// what to do when clicked.
 void qAnimation::doAction()
 {
-	//m_app should have already been initialized by CC when plugin is loaded!
+	// m_app should have already been initialized by CC when plugin is loaded!
 	//(--> purely internal check)
 	if (nullptr == m_app)
 	{
@@ -104,7 +104,7 @@ void qAnimation::doAction()
 		return;
 	}
 
-	//get active GL window
+	// get active GL window
 	ccGLWindowInterface* glWindow = m_app->getActiveGLWindow();
 	if (!glWindow)
 	{
@@ -115,22 +115,22 @@ void qAnimation::doAction()
 	// backup the view parameters before running the plugin
 	ExtendedViewportParameters evp(glWindow->getViewportParameters());
 	evp.customLightEnabled = glWindow->customLightEnabled();
-	evp.customLightPos = glWindow->getCustomLightPosition();
+	evp.customLightPos     = glWindow->getCustomLightPosition();
 
-	ViewPortList viewports = GetSelectedViewPorts( m_app->getSelectedEntities() );
+	ViewPortList viewports = GetSelectedViewPorts(m_app->getSelectedEntities());
 
-	Q_ASSERT( viewports.size() >= 2 ); // action will not be active unless we have at least 2 viewports
+	Q_ASSERT(viewports.size() >= 2); // action will not be active unless we have at least 2 viewports
 
 	m_app->dispToConsole(QString("[qAnimation] Selected viewports: %1").arg(viewports.size()));
 
 	qAnimationDlg videoDlg(glWindow, m_app->getMainWindow());
-	
+
 	if (!videoDlg.init(viewports))
 	{
 		m_app->dispToConsole("Failed to initialize the plugin dialog (not enough memory?)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
-	
+
 	videoDlg.exec();
 
 	// restore the view parameters after running the plugin
@@ -139,7 +139,7 @@ void qAnimation::doAction()
 	glWindow->setCustomLightPosition(evp.customLightPos);
 	glWindow->redraw();
 
-	//Export trajectory (for debug)
+	// Export trajectory (for debug)
 	if (videoDlg.exportTrajectoryOnExit())
 	{
 		ccPolyline* trajectory = videoDlg.getTrajectory();
@@ -147,7 +147,7 @@ void qAnimation::doAction()
 		{
 			trajectory->setTempColor(ccColor::red);
 			trajectory->setWidth(2);
-			//trajectory->prepareDisplayForRefresh();
+			// trajectory->prepareDisplayForRefresh();
 
 			getMainAppInterface()->addToDB(trajectory);
 		}

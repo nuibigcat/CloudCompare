@@ -1,10 +1,10 @@
 #include "../include/ccColorStyledDelegate.h"
 
-//QT
+// QT
 #include <QPainter>
 
 ccColorStyledDelegate::ccColorStyledDelegate(QObject* parent)
-	: QStyledItemDelegate(parent)
+    : QStyledItemDelegate(parent)
 {
 }
 

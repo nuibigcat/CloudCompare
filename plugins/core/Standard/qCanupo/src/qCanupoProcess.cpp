@@ -1,40 +1,40 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
 #include "qCanupoProcess.h"
 
-//local
+// local
 #include "qCanupoTools.h"
 
-//CloudCompare
+// CloudCompare
 #include <ccMainAppInterface.h>
 
-//CCCoreLib
+// CCCoreLib
 #include <CloudSamplingTools.h>
 #include <ReferenceCloud.h>
 
-//qCC_db
+// qCC_db
 #include <ccOctree.h>
 #include <ccOctreeProxy.h>
 #include <ccPointCloud.h>
 #include <ccProgressDialog.h>
 #include <ccScalarField.h>
 
-//Qt
+// Qt
 #include <QApplication>
 #include <QMessageBox>
 #include <QStringList>
@@ -45,23 +45,22 @@ static const char CANUPO_PER_LEVEL_ROUGHNESS_SF_NAME[] = "CANUPO.roughness";
 #endif
 static const char CANUPO_PER_LEVEL_ADDITIONAL_SF_NAME[] = "CANUPO.(x-y)";
 
-//Reserved name for CANUPO 'MSC' meta-data
+// Reserved name for CANUPO 'MSC' meta-data
 static const char s_canupoMSCMetaData[] = "CanupoMSCData";
 
-//Tries to refine the classification (returns the new confidence if successful)
-static float RefinePointClassif(const Classifier& classifier,
-								const float confidence,
-								float& distToBoundary,
-								ccPointCloud* cloud,
-								ccOctree* octree,
-								unsigned char octreeLevel,
-								CCCoreLib::GenericIndexedCloudPersist* corePoints,
-								CCCoreLib::DgmOctree* corePointsOctree,
-								unsigned char coreOctreeLevel,
-								unsigned coreIndex,
-								PointCoordinateType largestRadius,
-								const std::vector<int>& corePointClasses
-	)
+// Tries to refine the classification (returns the new confidence if successful)
+static float RefinePointClassif(const Classifier&                      classifier,
+                                const float                            confidence,
+                                float&                                 distToBoundary,
+                                ccPointCloud*                          cloud,
+                                ccOctree*                              octree,
+                                unsigned char                          octreeLevel,
+                                CCCoreLib::GenericIndexedCloudPersist* corePoints,
+                                CCCoreLib::DgmOctree*                  corePointsOctree,
+                                unsigned char                          coreOctreeLevel,
+                                unsigned                               coreIndex,
+                                PointCoordinateType                    largestRadius,
+                                const std::vector<int>&                corePointClasses)
 {
 	CCCoreLib::ScalarField* sf = cloud->getCurrentDisplayedScalarField();
 	if (!sf)
@@ -74,10 +73,10 @@ static float RefinePointClassif(const Classifier& classifier,
 	{
 		// find all scene data around that core point
 		CCCoreLib::DgmOctree::NeighboursSet neighbors;
-		int n = octree->getPointsInSphericalNeighbourhood(*corePoints->getPoint(coreIndex),
-			largestRadius, //we use the biggest neighborhood
-			neighbors,
-			octreeLevel);
+		int                                 n = octree->getPointsInSphericalNeighbourhood(*corePoints->getPoint(coreIndex),
+                                                          largestRadius, // we use the biggest neighborhood
+                                                          neighbors,
+                                                          octreeLevel);
 
 		// for each scene data point, find the corresponding core point and check if it is reliable
 		std::vector<ScalarType> class1SFValues;
@@ -85,22 +84,23 @@ static float RefinePointClassif(const Classifier& classifier,
 		for (int j = 0; j < n; ++j)
 		{
 			unsigned currentPointIndex = neighbors[j].pointIndex;
-			//look for the nearest 'core point' neighbor
+			// look for the nearest 'core point' neighbor
 			unsigned nearestCoreIndex = 0;
 			if (corePoints == cloud)
 			{
-				//if we used the whole cloud as core points, then each point is a core point!
+				// if we used the whole cloud as core points, then each point is a core point!
 				nearestCoreIndex = currentPointIndex;
 			}
 			else
 			{
-				double maxSquareDist = 0;
+				double                    maxSquareDist = 0;
 				CCCoreLib::ReferenceCloud Yk(corePoints);
-				if (corePointsOctree->findPointNeighbourhood(cloud->getPoint(	currentPointIndex),
-																				&Yk,
-																				1,
-																				coreOctreeLevel,
-																				maxSquareDist) == 1)
+				if (corePointsOctree->findPointNeighbourhood(cloud->getPoint(currentPointIndex),
+				                                             &Yk,
+				                                             1,
+				                                             coreOctreeLevel,
+				                                             maxSquareDist)
+				    == 1)
 				{
 					nearestCoreIndex = Yk.getPointGlobalIndex(0);
 				}
@@ -127,7 +127,7 @@ static float RefinePointClassif(const Classifier& classifier,
 		size_t nsamples = class1SFValues.size() + class2SFValues.size();
 		if (nsamples == 0)
 		{
-			//nothing to do
+			// nothing to do
 			return confidence;
 		}
 
@@ -137,16 +137,16 @@ static float RefinePointClassif(const Classifier& classifier,
 			distToBoundary = static_cast<float>(class2SFValues.size()) / n;
 			if (distToBoundary < 0.5f)
 			{
-				//too close
+				// too close
 				return confidence;
 			}
 		}
 		else if (class2SFValues.empty())
 		{
-			distToBoundary = -static_cast<float>(class1SFValues.size()) / n; //dist(class 1) < 0
+			distToBoundary = -static_cast<float>(class1SFValues.size()) / n; // dist(class 1) < 0
 			if (distToBoundary > -0.5f)
 			{
-				//too close
+				// too close
 				return confidence;
 			}
 		}
@@ -156,7 +156,7 @@ static float RefinePointClassif(const Classifier& classifier,
 			std::sort(class2SFValues.begin(), class2SFValues.end());
 
 			std::vector<ScalarType>* smallestSet = &class1SFValues;
-			std::vector<ScalarType>* largestSet = &class2SFValues;
+			std::vector<ScalarType>* largestSet  = &class2SFValues;
 
 			if (class1SFValues.size() >= class2SFValues.size())
 			{
@@ -164,8 +164,8 @@ static float RefinePointClassif(const Classifier& classifier,
 			}
 
 			std::vector<ScalarType> bestSplit;
-			std::vector<int> bestSplitDir;
-			float bestConfidence = -1.0f;
+			std::vector<int>        bestSplitDir;
+			float                   bestConfidence = -1.0f;
 
 			for (size_t k = 0; k < smallestSet->size(); ++k)
 			{
@@ -186,8 +186,8 @@ static float RefinePointClassif(const Classifier& classifier,
 				}
 
 				// classification on either side, take largest and reverse roles if necessary
-				float c1 = static_cast<float>(nlabove) / largestSet->size() + static_cast<float>(nsbelow) / smallestSet->size();
-				float c2 = static_cast<float>(largestSet->size() - nlabove) / largestSet->size() + static_cast<float>(smallestSet->size() - nsbelow) / smallestSet->size();
+				float c1   = static_cast<float>(nlabove) / largestSet->size() + static_cast<float>(nsbelow) / smallestSet->size();
+				float c2   = static_cast<float>(largestSet->size() - nlabove) / largestSet->size() + static_cast<float>(smallestSet->size() - nsbelow) / smallestSet->size();
 				float conf = std::max(c1, c2);
 				// no need to average for comparison purpose
 				if (bestConfidence < conf)
@@ -208,10 +208,10 @@ static float RefinePointClassif(const Classifier& classifier,
 			// see if we're improving estimated probability or not
 			// TODO: sometimes (rarely) there are mistakes in the reference core points and we're dealing with similar classes
 			// => put back these core points in the unreliable pool
-			if (/*old*/confidence < bestConfidence)
+			if (/*old*/ confidence < bestConfidence)
 			{
 				// take median best split
-				size_t bsi = bestSplit.size() / 2;
+				size_t bsi     = bestSplit.size() / 2;
 				distToBoundary = sf->getValue(coreIndex) - bestSplit[bsi];
 				// reverse if necessary
 				if (bestSplitDir[bsi] == 1)
@@ -222,48 +222,48 @@ static float RefinePointClassif(const Classifier& classifier,
 			}
 			else
 			{
-				//no improvement
+				// no improvement
 				return confidence;
 			}
 		}
 
-		//update confidence
-		float newConfidence = 1.0f / (exp(-std::abs(distToBoundary)) + 1.0f); //in [0.5 ; 1]
-		newConfidence = 2 * (newConfidence - 0.5f); //map to [0;1]
+		// update confidence
+		float newConfidence = 1.0f / (exp(-std::abs(distToBoundary)) + 1.0f); // in [0.5 ; 1]
+		newConfidence       = 2 * (newConfidence - 0.5f);                     // map to [0;1]
 
 		return newConfidence;
 	}
 	catch (const std::bad_alloc&)
 	{
-		//not enough memory
+		// not enough memory
 		return -1.0f;
 	}
 
-	assert(false); //we shouldn't arrive here!
+	assert(false); // we shouldn't arrive here!
 	return confidence;
 }
 
-bool qCanupoProcess::Classify(	QString classifierFilename,
-								const ClassifyParams& params,
-								ccPointCloud* cloud,
-								CCCoreLib::GenericIndexedCloudPersist* corePoints,
-								CorePointDescSet& corePointsDescriptors,
-								ccPointCloud* realCorePoints/*=nullptr*/,
-								ccMainAppInterface* app/*=nullptr*/,
-								QWidget* parentWidget/*=nullptr*/,
-								bool silent/*=false*/)
+bool qCanupoProcess::Classify(QString                                classifierFilename,
+                              const ClassifyParams&                  params,
+                              ccPointCloud*                          cloud,
+                              CCCoreLib::GenericIndexedCloudPersist* corePoints,
+                              CorePointDescSet&                      corePointsDescriptors,
+                              ccPointCloud*                          realCorePoints /*=nullptr*/,
+                              ccMainAppInterface*                    app /*=nullptr*/,
+                              QWidget*                               parentWidget /*=nullptr*/,
+                              bool                                   silent /*=false*/)
 {
-	//core points are mandatory
+	// core points are mandatory
 	if (!cloud || !corePoints)
 	{
 		assert(false);
 		return false;
 	}
 
-	//load the classifier file
+	// load the classifier file
 	std::vector<Classifier> classifiers;
-	std::vector<float> scales;
-	unsigned descriptorID = DESC_DIMENSIONALITY;
+	std::vector<float>      scales;
+	unsigned                descriptorID = DESC_DIMENSIONALITY;
 	{
 		QString error;
 		if (!Classifier::Load(classifierFilename, classifiers, scales, error))
@@ -279,7 +279,7 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 			return false;
 		}
 
-		//check that the descriptor ID of every classifier is handled by this version!
+		// check that the descriptor ID of every classifier is handled by this version!
 		for (size_t i = 0; i < classifiers.size(); ++i)
 		{
 			if (!ScaleParamsComputer::GetByID(classifiers[i].descriptorID))
@@ -298,19 +298,19 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 		descriptorID = classifiers[0].descriptorID;
 	}
 
-	//progress dialog
+	// progress dialog
 	ccProgressDialog pDlg(true, parentWidget);
 
-	//does the core point cloud has associated meta-data?
+	// does the core point cloud has associated meta-data?
 	QVariant mscMetaData;
-	bool useExistingMetaData = false;
+	bool     useExistingMetaData = false;
 	if (realCorePoints)
 	{
 		mscMetaData = realCorePoints->getMetaData(s_canupoMSCMetaData);
 		if (mscMetaData.isValid())
 		{
-			bool validMetaData = (	mscMetaData.type() == QVariant::ByteArray
-								&&	corePointsDescriptors.fromByteArray(mscMetaData.toByteArray()));
+			bool validMetaData = (mscMetaData.type() == QVariant::ByteArray
+			                      && corePointsDescriptors.fromByteArray(mscMetaData.toByteArray()));
 
 			if (validMetaData)
 			{
@@ -326,57 +326,49 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 	}
 
 #ifdef COMPILE_PRIVATE_CANUPO
-	//whether to compute per scale roughness for each core point!
-	bool generateRoughnessSF = params.generateRoughnessSF;
+	// whether to compute per scale roughness for each core point!
+	bool                        generateRoughnessSF = params.generateRoughnessSF;
 	std::vector<ccScalarField*> coreRoughnessSFs;
 #endif
 
 	try
 	{
-		for (int step = 0; step < 1; ++step) //fake loop for easy break
+		for (int step = 0; step < 1; ++step) // fake loop for easy break
 		{
-			//check descriptors' scales (if already loaded)
+			// check descriptors' scales (if already loaded)
 			bool computeDescriptors = true;
 			if (!corePointsDescriptors.scales().empty())
 			{
 				if (qCanupoTools::TestVectorsOverlap(scales, corePointsDescriptors.scales()) < scales.size())
 				{
-					if (!silent && QMessageBox::question(	parentWidget,
-															"Scales mismatch",
-															"Available descriptors/scales data mismatch with classifier's! Compute new descriptors or cancel?",
-															QMessageBox::Yes,
-															QMessageBox::Cancel) == QMessageBox::Cancel)
+					if (!silent && QMessageBox::question(parentWidget, "Scales mismatch", "Available descriptors/scales data mismatch with classifier's! Compute new descriptors or cancel?", QMessageBox::Yes, QMessageBox::Cancel) == QMessageBox::Cancel)
 					{
-						//cancel process
+						// cancel process
 						break;
 					}
 				}
 				else
 				{
-					computeDescriptors = false; //no need to compute the descriptors as we already have them!
+					computeDescriptors = false; // no need to compute the descriptors as we already have them!
 				}
 
-				//check descriptor type!
+				// check descriptor type!
 				if (!computeDescriptors && corePointsDescriptors.descriptorID() != descriptorID)
 				{
-					if (!silent && QMessageBox::question(parentWidget,
-														"Descriptor type mismatch",
-														"Available descriptors have been computed with another descriptor type! Compute new descriptors or cancel?",
-														QMessageBox::Yes,
-														QMessageBox::Cancel) == QMessageBox::Cancel)
+					if (!silent && QMessageBox::question(parentWidget, "Descriptor type mismatch", "Available descriptors have been computed with another descriptor type! Compute new descriptors or cancel?", QMessageBox::Yes, QMessageBox::Cancel) == QMessageBox::Cancel)
 					{
-						//cancel process
+						// cancel process
 						break;
 					}
 					else
 					{
-						//force new computation
+						// force new computation
 						computeDescriptors = true;
 					}
 				}
 			}
 
-			//compute the original cloud octree
+			// compute the original cloud octree
 			ccOctree::Shared octree = cloud->getOctree();
 			if (!octree)
 			{
@@ -397,10 +389,10 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 			computeDescriptors |= generateRoughnessSF;
 #endif
 
-			//let's compute the descriptors
+			// let's compute the descriptors
 			if (computeDescriptors)
 			{
-				//check that the selected descriptor (computer) is valid
+				// check that the selected descriptor (computer) is valid
 				{
 					assert(descriptorID != 0);
 					ScaleParamsComputer* computer = ScaleParamsComputer::GetByID(descriptorID);
@@ -412,10 +404,9 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 					}
 
 					if (computer->needSF()
-						&& ((realCorePoints		&& realCorePoints->getCurrentDisplayedScalarField() == nullptr)
-						||  (!realCorePoints	&&          cloud->getCurrentDisplayedScalarField() == nullptr) //if realCorePoints == nullptr, it means that the subsampled cloud couldn't be converted to a real cloud!
-						)
-						)
+					    && ((realCorePoints && realCorePoints->getCurrentDisplayedScalarField() == nullptr)
+					        || (!realCorePoints && cloud->getCurrentDisplayedScalarField() == nullptr) // if realCorePoints == nullptr, it means that the subsampled cloud couldn't be converted to a real cloud!
+					        ))
 					{
 						if (app)
 							app->dispToConsole(QString("To compute this type of descriptor, the core points cloud must have an active scalar field!"), ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -424,12 +415,12 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 				}
 
 #ifdef COMPILE_PRIVATE_CANUPO
-				//test: create 1 sf per scale with roughness
+				// test: create 1 sf per scale with roughness
 				if (generateRoughnessSF)
 				{
 					size_t scaleCount = scales.size();
-					coreRoughnessSFs.resize(scaleCount,0);
-					//for each scale
+					coreRoughnessSFs.resize(scaleCount, 0);
+					// for each scale
 					for (size_t s = 0; s < scaleCount; ++s)
 					{
 						QString sfName = QString(CANUPO_PER_LEVEL_ROUGHNESS_SF_NAME) + QString(" @ scale %1").arg(scales[s]);
@@ -448,23 +439,24 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 				if (app)
 					app->dispToConsole(QString("[Canupo] Will use %1 threads").arg(params.maxThreadCount == 0 ? "the max number of" : QString::number(params.maxThreadCount)), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 
-				//computes the 'descriptors'
-				bool invalidDescriptors = false;
+				// computes the 'descriptors'
+				bool    invalidDescriptors = false;
 				QString errorStr;
 				if (!qCanupoTools::ComputeCorePointsDescriptors(corePoints,
-					corePointsDescriptors,
-					cloud,
-					scales,
-					invalidDescriptors,
-					errorStr,
-					descriptorID,
-					params.maxThreadCount,
-					&pDlg,
-					octree.data()
+				                                                corePointsDescriptors,
+				                                                cloud,
+				                                                scales,
+				                                                invalidDescriptors,
+				                                                errorStr,
+				                                                descriptorID,
+				                                                params.maxThreadCount,
+				                                                &pDlg,
+				                                                octree.data()
 #ifdef COMPILE_PRIVATE_CANUPO
-					, generateRoughnessSF ? &coreRoughnessSFs : nullptr
+				                                                    ,
+				                                                generateRoughnessSF ? &coreRoughnessSFs : nullptr
 #endif
-					))
+				                                                ))
 				{
 					if (app)
 						app->dispToConsole(QString("Failed to compute core points descriptors: %1").arg(errorStr), ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -477,9 +469,9 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 				}
 			}
 
-			//main classification process
+			// main classification process
 			{
-				//advanced options
+				// advanced options
 				assert(!params.useActiveSFForConfidence || cloud->getCurrentDisplayedScalarField() != nullptr);
 
 				// core points octree
@@ -502,13 +494,13 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 				}
 				assert(corePointsOctree);
 
-				const PointCoordinateType& largestRadius = scales.front() / 2; //largest scale is the first by construction in canupo
-				unsigned char coreOctreeLevel = corePointsOctree->findBestLevelForAGivenNeighbourhoodSizeExtraction(params.samplingDist != 0 ? params.samplingDist : largestRadius);
-				unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(largestRadius);
+				const PointCoordinateType& largestRadius   = scales.front() / 2; // largest scale is the first by construction in canupo
+				unsigned char              coreOctreeLevel = corePointsOctree->findBestLevelForAGivenNeighbourhoodSizeExtraction(params.samplingDist != 0 ? params.samplingDist : largestRadius);
+				unsigned char              octreeLevel     = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(largestRadius);
 
-				//core points class labels
+				// core points class labels
 				std::vector<int> corePointClasses;
-				//core points confidence values
+				// core points confidence values
 				std::vector<float> corePointConfidences;
 
 				// set the class of all core points that are far enough from hyperplane
@@ -519,7 +511,7 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 				corePointClasses.resize(corePointCount, -1);
 				corePointConfidences.resize(corePointCount, 0.0f);
 
-				//number of points that couldn't be classified
+				// number of points that couldn't be classified
 				std::vector<unsigned> pendingPoints(corePointCount);
 				{
 					for (size_t i = 0; i < corePointCount; ++i)
@@ -530,10 +522,10 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 				CCCoreLib::ScalarField* sf = cloud->getCurrentDisplayedScalarField();
 				assert(!params.useActiveSFForConfidence || sf);
 
-				//while unreliable points remain
+				// while unreliable points remain
 				while (!pendingPoints.empty())
 				{
-					//progress notification
+					// progress notification
 					pDlg.reset();
 					pDlg.setInfo(QObject::tr("Remaining points to classify: %1\nSource points: %2").arg(pendingPoints.size()).arg(cloud->size()));
 					pDlg.setMethodTitle(QObject::tr("Classification"));
@@ -542,38 +534,38 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 
 					for (size_t i = 0; i < pendingPoints.size(); ++i)
 					{
-						unsigned coreIndex = pendingPoints[i];
-						CorePointDesc& coreDesc = corePointsDescriptors[coreIndex];
+						unsigned       coreIndex = pendingPoints[i];
+						CorePointDesc& coreDesc  = corePointsDescriptors[coreIndex];
 
-						//most common case
+						// most common case
 						if (classifiers.size() == 1)
 						{
-							const Classifier& classifier = classifiers.front();
-							float distToBoundary = classifier.classify(coreDesc);
+							const Classifier& classifier     = classifiers.front();
+							float             distToBoundary = classifier.classify(coreDesc);
 
-							float confidence = 1.0f / (exp(-std::abs(distToBoundary)) + 1.0f); //in [0.5 ; 1]
-							confidence = 2 * (confidence - 0.5f); //map to [0;1]
+							float confidence = 1.0f / (exp(-std::abs(distToBoundary)) + 1.0f); // in [0.5 ; 1]
+							confidence       = 2 * (confidence - 0.5f);                        // map to [0;1]
 
-							//unreliable point
+							// unreliable point
 							bool unreliable = false;
 							if (confidence < params.confidenceThreshold)
 							{
 								unreliable = true;
 								if (params.useActiveSFForConfidence)
 								{
-									//use the scalar field to refine the classification
-									float newConfidence = RefinePointClassif(	classifier,
-																				confidence,
-																				distToBoundary,
-																				cloud,
-																				octree.data(),
-																				octreeLevel,
-																				corePoints,
-																				corePointsOctree,
-																				coreOctreeLevel,
-																				coreIndex,
-																				largestRadius,
-																				corePointClasses);
+									// use the scalar field to refine the classification
+									float newConfidence = RefinePointClassif(classifier,
+									                                         confidence,
+									                                         distToBoundary,
+									                                         cloud,
+									                                         octree.data(),
+									                                         octreeLevel,
+									                                         corePoints,
+									                                         corePointsOctree,
+									                                         coreOctreeLevel,
+									                                         coreIndex,
+									                                         largestRadius,
+									                                         corePointClasses);
 
 									if (newConfidence < 0)
 									{
@@ -591,20 +583,20 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 
 							if (!unreliable)
 							{
-								int theClass = (distToBoundary >= 0 ? classifier.class2 : classifier.class1);
-								corePointClasses[i] = theClass;
+								int theClass            = (distToBoundary >= 0 ? classifier.class2 : classifier.class1);
+								corePointClasses[i]     = theClass;
 								corePointConfidences[i] = confidence;
 							}
 							else if (params.useActiveSFForConfidence)
 							{
-								//this point can't be classified this way
+								// this point can't be classified this way
 								unreliablePointIndexes.push_back(static_cast<unsigned>(i));
 							}
 						}
-						else //more than one classifier
+						else // more than one classifier
 						{
-							std::map< int, int > votes;
-							std::map< int, float > minConfidences;
+							std::map<int, int>   votes;
+							std::map<int, float> minConfidences;
 
 							// apply all classifiers and look for the most represented class
 							for (std::vector<Classifier>::const_iterator classifierIt = classifiers.begin(); classifierIt != classifiers.end(); ++classifierIt)
@@ -612,38 +604,38 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 								const Classifier& classifier = *classifierIt;
 
 								// uniformize the order, distToBoundary>0 selects the larger class of both
-								float distToBoundary = classifier.classify(coreDesc); //DGM: the descriptors may have more values than the number of scales!
-								//if (classifier.class1 > classifier.class2)
+								float distToBoundary = classifier.classify(coreDesc); // DGM: the descriptors may have more values than the number of scales!
+								// if (classifier.class1 > classifier.class2)
 								//	distToBoundary = -distToBoundary;
 
-								//int minclass = std::min(classifier.class1, classifier.class2);
-								//int maxclass = std::max(classifier.class1, classifier.class2);
+								// int minclass = std::min(classifier.class1, classifier.class2);
+								// int maxclass = std::max(classifier.class1, classifier.class2);
 
-								//int minclass = classifier.class1;
-								//int maxclass = classifier.class2;
+								// int minclass = classifier.class1;
+								// int maxclass = classifier.class2;
 
-								float confidence = 1.0f / (exp(-std::abs(distToBoundary)) + 1.0f); //in [0.5 ; 1]
-								confidence = 2 * (confidence - 0.5f); //map to [0;1]
+								float confidence = 1.0f / (exp(-std::abs(distToBoundary)) + 1.0f); // in [0.5 ; 1]
+								confidence       = 2 * (confidence - 0.5f);                        // map to [0;1]
 
-								//unreliable point
+								// unreliable point
 								if (confidence < params.confidenceThreshold)
 								{
 									bool unreliable = true;
 									if (params.useActiveSFForConfidence)
 									{
-										//use the scalar field to refine the classification
+										// use the scalar field to refine the classification
 										float newConfidence = RefinePointClassif(classifier,
-											confidence,
-											distToBoundary,
-											cloud,
-											octree.data(),
-											octreeLevel,
-											corePoints,
-											corePointsOctree,
-											coreOctreeLevel,
-											coreIndex,
-											largestRadius,
-											corePointClasses);
+										                                         confidence,
+										                                         distToBoundary,
+										                                         cloud,
+										                                         octree.data(),
+										                                         octreeLevel,
+										                                         corePoints,
+										                                         corePointsOctree,
+										                                         coreOctreeLevel,
+										                                         coreIndex,
+										                                         largestRadius,
+										                                         corePointClasses);
 
 										if (newConfidence < 0)
 										{
@@ -684,8 +676,8 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 							{
 								// search for max vote
 								std::vector<int> bestClasses;
-								int maxVoteCount = -1;
-								for (auto &vote : votes)
+								int              maxVoteCount = -1;
+								for (auto& vote : votes)
 								{
 									int voteCount = vote.second;
 									if (maxVoteCount < voteCount)
@@ -704,24 +696,24 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 								int bestClassLabel = bestClasses.front();
 								if (bestClasses.size() > 1)
 								{
-									for (size_t j = 1; j<bestClasses.size(); ++j)
+									for (size_t j = 1; j < bestClasses.size(); ++j)
 									{
 										if (minConfidences[bestClasses[j]] > minConfidences[bestClassLabel])
 											bestClassLabel = bestClasses[j];
 									}
 								}
 
-								corePointClasses[i] = bestClassLabel;
+								corePointClasses[i]     = bestClassLabel;
 								corePointConfidences[i] = minConfidences[bestClassLabel];
 							}
 							else if (params.useActiveSFForConfidence)
 							{
-								//this point can't be classified this way
+								// this point can't be classified this way
 								unreliablePointIndexes.push_back(static_cast<unsigned>(i));
 							}
 						}
 
-						//progress notification
+						// progress notification
 						if (!nProgress.oneStep())
 						{
 							processCanceled = true;
@@ -729,7 +721,7 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 						}
 					}
 
-					//nothing has changed?
+					// nothing has changed?
 					if (pendingPoints.size() == unreliablePointIndexes.size())
 					{
 						break;
@@ -749,8 +741,8 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 				// eventually label the points
 				{
 					// instantiate the scalar fields
-					CCCoreLib::ScalarField* classLabelSF = nullptr;
-					int classLabelSFIdx = -1;
+					CCCoreLib::ScalarField* classLabelSF    = nullptr;
+					int                     classLabelSFIdx = -1;
 					{
 						classLabelSFIdx = cloud->getScalarFieldIndexByName("CANUPO.class");
 						if (classLabelSFIdx < 0)
@@ -768,8 +760,8 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 						}
 					}
 
-					CCCoreLib::ScalarField* confidenceSF = nullptr;
-					int confidenceSFIdx = -1;
+					CCCoreLib::ScalarField* confidenceSF    = nullptr;
+					int                     confidenceSFIdx = -1;
 					{
 						confidenceSFIdx = cloud->getScalarFieldIndexByName("CANUPO.confidence");
 						if (confidenceSFIdx < 0)
@@ -785,9 +777,9 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 						}
 					}
 
-					//optional: create 1 SF per scale with 'x-y'
+					// optional: create 1 SF per scale with 'x-y'
 					std::vector<ccScalarField*> scaleSFs;
-					bool generateAdditionalSF = params.generateAdditionalSF;
+					bool                        generateAdditionalSF = params.generateAdditionalSF;
 					if (generateAdditionalSF && corePointsDescriptors.dimPerScale() != 2)
 					{
 						if (app)
@@ -797,7 +789,7 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 
 					if (generateAdditionalSF)
 					{
-						//remove any previously generated scalar field starting by CANUPO_PER_LEVEL_ADDITIONAL_SF_NAME
+						// remove any previously generated scalar field starting by CANUPO_PER_LEVEL_ADDITIONAL_SF_NAME
 						{
 							QStringList toDelete;
 							for (unsigned i = 0; i < cloud->getNumberOfScalarFields(); ++i)
@@ -813,12 +805,12 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 
 						size_t scaleCount = scales.size();
 						scaleSFs.resize(scaleCount, nullptr);
-						//for each scale
+						// for each scale
 						for (size_t s = 0; s < scaleCount; ++s)
 						{
 							QString sfName = QString(CANUPO_PER_LEVEL_ADDITIONAL_SF_NAME) + QString(" @ scale %1").arg(scales[s]);
 
-							//SF with same name (if any) should have already been removed!
+							// SF with same name (if any) should have already been removed!
 							assert(cloud->getScalarFieldIndexByName(qPrintable(sfName)) < 0);
 
 							scaleSFs[s] = new ccScalarField(qPrintable(sfName));
@@ -838,11 +830,11 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 					}
 
 #ifdef COMPILE_PRIVATE_CANUPO
-					//optional: create 1 sf per scale with roughness
+					// optional: create 1 sf per scale with roughness
 					std::vector<ccScalarField*> roughnessSFs;
 					if (generateRoughnessSF)
 					{
-						//remove any previously generated scalar field starting by CANUPO_PER_LEVEL_ROUGHNESS_SF_NAME
+						// remove any previously generated scalar field starting by CANUPO_PER_LEVEL_ROUGHNESS_SF_NAME
 						{
 							QStringList toDelete;
 							for (unsigned i = 0; i < cloud->getNumberOfScalarFields(); ++i)
@@ -856,32 +848,32 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 								cloud->deleteScalarField(cloud->getScalarFieldIndexByName(qPrintable(toDelete[j])));
 						}
 
-						//if the output cloud has the same number of points as the core points cloud, no need to duplicate the scalar fields!
+						// if the output cloud has the same number of points as the core points cloud, no need to duplicate the scalar fields!
 						if (corePoints->size() == cloud->size())
 						{
 							for (size_t s = 0; s < coreRoughnessSFs.size(); ++s)
 							{
-								//SF with same name (if any) should have already been removed!
+								// SF with same name (if any) should have already been removed!
 								assert(cloud->getScalarFieldIndexByName(coreRoughnessSFs[s]->getName()) < 0);
 
 								coreRoughnessSFs[s]->computeMinAndMax();
 								cloud->addScalarField(coreRoughnessSFs[s]);
 							}
-							coreRoughnessSFs.clear(); //don't want to release them anymore!
-							generateRoughnessSF = false; //no need to bother anymore
+							coreRoughnessSFs.clear();    // don't want to release them anymore!
+							generateRoughnessSF = false; // no need to bother anymore
 						}
 						else
 						{
 							size_t scaleCount = scales.size();
 							roughnessSFs.resize(scaleCount, 0);
 							assert(coreRoughnessSFs.size() == roughnessSFs.size());
-							//for each scale
+							// for each scale
 							for (size_t s = 0; s < scaleCount; ++s)
 							{
-								//same name as the per-core points version
+								// same name as the per-core points version
 								roughnessSFs[s] = new ccScalarField(coreRoughnessSFs[s]->getName());
 
-								//SF with same name (if any) should have already been removed!
+								// SF with same name (if any) should have already been removed!
 								assert(cloud->getScalarFieldIndexByName(roughnessSFs[s]->getName()) < 0);
 
 								if (!roughnessSFs[s]->resizeSafe(cloud->size(), CCCoreLib::NAN_VALUE))
@@ -901,14 +893,14 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 					}
 #endif
 
-					//progress notification
+					// progress notification
 					pDlg.reset();
 					pDlg.setInfo(QObject::tr("Core points: %1\nSource points: %2").arg(corePoints->size()).arg(cloud->size()));
 					pDlg.setMethodTitle(QObject::tr("Labelling"));
 					CCCoreLib::NormalizedProgress nProgress(&pDlg, cloud->size());
 					pDlg.start();
 
-					bool error = false;
+					bool                      error = false;
 					CCCoreLib::ReferenceCloud Yk(corePoints);
 					for (unsigned i = 0; i < cloud->size(); ++i)
 					{
@@ -918,7 +910,7 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 						unsigned nearestCorePointIndex = 0;
 						if (corePoints == cloud)
 						{
-							//if we used the whole cloud as core points, then each point is a core point
+							// if we used the whole cloud as core points, then each point is a core point
 							nearestCorePointIndex = i;
 						}
 						else
@@ -928,10 +920,11 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 
 							assert(corePointsOctree);
 							if (corePointsOctree->findPointNeighbourhood(P,
-								&Yk,
-								1,
-								coreOctreeLevel,
-								maxSquareDist) == 1)
+							                                             &Yk,
+							                                             1,
+							                                             coreOctreeLevel,
+							                                             maxSquareDist)
+							    == 1)
 							{
 								nearestCorePointIndex = Yk.getPointGlobalIndex(0);
 							}
@@ -955,7 +948,7 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 							confidenceSF->setValue(i, confVal);
 						}
 
-						//save 'x-y' values
+						// save 'x-y' values
 						if (generateAdditionalSF)
 						{
 							unsigned dimPerScale = corePointsDescriptors.dimPerScale();
@@ -964,13 +957,13 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 							assert(desc.params.size() == scaleSFs.size() * dimPerScale);
 							for (size_t s = 0; s < scaleSFs.size(); ++s)
 							{
-								ScalarType val = (desc.params[s*dimPerScale] - desc.params[s*dimPerScale + 1]);
+								ScalarType val = (desc.params[s * dimPerScale] - desc.params[s * dimPerScale + 1]);
 								scaleSFs[s]->setValue(i, val);
 							}
 						}
 
 #ifdef COMPILE_PRIVATE_CANUPO
-						//save roughness values
+						// save roughness values
 						if (generateRoughnessSF)
 						{
 							const CorePointDesc& desc = corePointsDescriptors[nearestCorePointIndex];
@@ -983,7 +976,7 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 						}
 #endif
 
-						//progress notification
+						// progress notification
 						if (!nProgress.oneStep())
 						{
 							processCanceled = true;
@@ -1016,7 +1009,7 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 
 						if (generateAdditionalSF)
 						{
-							for (auto &scaleSF : scaleSFs)
+							for (auto& scaleSF : scaleSFs)
 							{
 								scaleSF->computeMinAndMax();
 								scaleSF->setSymmetricalScale(true);
@@ -1038,25 +1031,20 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 					cloud->showSF(cloud->getCurrentDisplayedScalarField() != nullptr);
 				}
 
-				//dispose of octree
+				// dispose of octree
 				if (corePointsOctree != octree)
 				{
 					delete corePointsOctree;
 					corePointsOctree = nullptr;
 				}
 
-				//save MSC data as meta-data on the core point cloud
+				// save MSC data as meta-data on the core point cloud
 				if (realCorePoints && !useExistingMetaData)
 				{
 					bool proceed = true;
 					if (mscMetaData.isValid())
 					{
-						proceed = (silent || QMessageBox::question(	parentWidget,
-																	"Overwrite MSC meta-data?",
-																	"Core points cloud already has associated MSC meta-data, should we overwrite them?",
-																	QMessageBox::Yes,
-																	QMessageBox::No) == QMessageBox::Yes
-									);
+						proceed = (silent || QMessageBox::question(parentWidget, "Overwrite MSC meta-data?", "Core points cloud already has associated MSC meta-data, should we overwrite them?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes);
 					}
 
 					if (proceed)
@@ -1082,14 +1070,14 @@ bool qCanupoProcess::Classify(	QString classifierFilename,
 	}
 	catch (const std::bad_alloc&)
 	{
-		//not enough memory
+		// not enough memory
 		if (app)
 			app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return false;
 	}
 
 #ifdef COMPILE_PRIVATE_CANUPO
-	//release roughness SFs (if any)
+	// release roughness SFs (if any)
 	while (!coreRoughnessSFs.empty())
 	{
 		coreRoughnessSFs.back()->release();

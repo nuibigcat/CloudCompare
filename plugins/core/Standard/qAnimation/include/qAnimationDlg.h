@@ -1,35 +1,35 @@
 #pragma once
 
-//##########################################################################
-//#                                                                        #
-//#                   CLOUDCOMPARE PLUGIN: qAnimation                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#             COPYRIGHT: Ryan Wicks, 2G Robotics Inc., 2015              #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                   CLOUDCOMPARE PLUGIN: qAnimation                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #             COPYRIGHT: Ryan Wicks, 2G Robotics Inc., 2015              #
+// #                                                                        #
+// ##########################################################################
 
-//Local
+// Local
 #include "ExtendedViewport.h"
 
-//qCC_db
+// qCC_db
 #include <ccViewportParameters.h>
 
-//Qt
+// Qt
 #include <QDialog>
 
-//System
-#include <vector>
-
+// System
 #include "ui_animationDlg.h"
+
+#include <vector>
 
 class ccGLWindowInterface;
 class ccPolyline;
@@ -37,14 +37,14 @@ class cc2DViewportObject;
 class QListWidgetItem;
 
 //! Dialog for qAnimation plugin
-class qAnimationDlg : public QDialog, public Ui::AnimationDialog
+class qAnimationDlg : public QDialog
+    , public Ui::AnimationDialog
 {
 	Q_OBJECT
 
-public:
-
+  public:
 	//! Default constructor
-	qAnimationDlg(ccGLWindowInterface* view3d,  QWidget* parent = nullptr);
+	qAnimationDlg(ccGLWindowInterface* view3d, QWidget* parent = nullptr);
 
 	//! Destrcuctor
 	virtual ~qAnimationDlg();
@@ -53,10 +53,9 @@ public:
 	bool init(const std::vector<ExtendedViewport>& viewports);
 
 	ccPolyline* getTrajectory();
-	bool exportTrajectoryOnExit();
+	bool        exportTrajectoryOnExit();
 
-protected:
-
+  protected:
 	void onFPSChanged(int);
 	void onTotalTimeChanged(double);
 	void onStepTimeChanged(double);
@@ -68,16 +67,21 @@ protected:
 	void onSmoothRatioChanged(double);
 
 	void preview();
-	void renderAnimation() { render(false); }
-	void renderFrames() { render(true); }
+	void renderAnimation()
+	{
+		render(false);
+	}
+	void renderFrames()
+	{
+		render(true);
+	}
 	void onAccept();
 	void onReject();
 
 	void onItemChanged(QListWidgetItem*);
 
-protected: //methods
-
-	int getCurrentStepIndex();
+  protected: // methods
+	int    getCurrentStepIndex();
 	size_t countEnabledSteps() const;
 
 	bool smoothModeEnabled() const;
@@ -104,12 +108,12 @@ protected: //methods
 	{
 		cc2DViewportObject* viewport = nullptr;
 
-		int indexInOriginalTrajectory = -1;
+		int        indexInOriginalTrajectory = -1;
 		CCVector3d cameraCenter;
 
-		double duration_sec = 0.0;
-		double length = 0.0;
-		int indexInSmoothTrajectory = -1;
+		double duration_sec            = 0.0;
+		double length                  = 0.0;
+		int    indexInSmoothTrajectory = -1;
 	};
 
 	typedef std::vector<Step> Trajectory;
@@ -118,8 +122,7 @@ protected: //methods
 
 	void updateSmoothTrajectoryDurations();
 
-protected: //members
-
+  protected: // members
 	//! Animation
 	Trajectory m_videoSteps;
 	//! Smoothed animation

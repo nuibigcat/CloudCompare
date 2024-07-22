@@ -1,54 +1,55 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qPCL                        #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                    COPYRIGHT: CloudCompare project                     #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qPCL                        #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                    COPYRIGHT: CloudCompare project                     #
+// #                                                                        #
+// ##########################################################################
 
 #include "FastGlobalRegistrationFilter.h"
+
 #include "FastGlobalRegistration.h"
 #include "FastGlobalRegistrationDlg.h"
 
-//Local
+// Local
 #include "../utils/cc2sm.h"
 #include "../utils/sm2cc.h"
 
-//PCL
+// PCL
 #include <pcl/features/fpfh_omp.h>
 
-//qCC_plugins
+// qCC_plugins
 #include <ccMainAppInterface.h>
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 
-//Qt
+// Qt
 #include <QMainWindow>
 
-//Boost
+// Boost
 #include <boost/make_shared.hpp>
 
 // Error codes
 static constexpr int NoNormals = -11;
 
 FastGlobalRegistrationFilter::FastGlobalRegistrationFilter()
-	: BaseFilter(FilterDescription("Fast Global Registration",
-									"Fast Global Registration, by Zhou et al.",
-									"Attempts to automatically register clouds (with normals) without initial alignment",
-									":/toolbar/PclUtils/icons/fastGlobalRegistration.png"))
-	, m_alignedClouds()
-	, m_referenceCloud(nullptr)
-	, m_featureRadius(0)
+    : BaseFilter(FilterDescription("Fast Global Registration",
+                                   "Fast Global Registration, by Zhou et al.",
+                                   "Attempts to automatically register clouds (with normals) without initial alignment",
+                                   ":/toolbar/PclUtils/icons/fastGlobalRegistration.png"))
+    , m_alignedClouds()
+    , m_referenceCloud(nullptr)
+    , m_featureRadius(0)
 {
 }
 
@@ -63,7 +64,7 @@ QString FastGlobalRegistrationFilter::getErrorMessage(int errorCode) const
 	case NoNormals:
 		return tr("Clouds must have normals");
 	default:
-		//see below
+		// see below
 		break;
 	}
 
@@ -79,7 +80,7 @@ bool FastGlobalRegistrationFilter::checkSelected() const
 
 	for (ccHObject* entity : m_selectedEntities)
 	{
-		//clouds only
+		// clouds only
 		if (!entity->isA(CC_TYPES::POINT_CLOUD))
 			return false;
 	}
@@ -101,7 +102,7 @@ static bool ComputeFeatures(ccPointCloud* cloud, fgr::Features& features, double
 		ccLog::Warning("Cloud is empty");
 		return false;
 	}
-	
+
 	pcl::PointCloud<pcl::PointNormal>::Ptr tmp_cloud = cc2smReader(cloud).getAsPointNormal();
 	if (!tmp_cloud)
 	{
@@ -157,7 +158,7 @@ static bool ConverFromTo(const ccPointCloud& cloud, fgr::Points& points)
 		for (unsigned i = 0; i < pointCount; ++i)
 		{
 			const CCVector3* P = cloud.getPoint(i);
-			points[i] = Eigen::Vector3f(P->x, P->y, P->z);
+			points[i]          = Eigen::Vector3f(P->x, P->y, P->z);
 		}
 	}
 	catch (const std::bad_alloc&)
@@ -175,12 +176,12 @@ int FastGlobalRegistrationFilter::getParametersFromDialog()
 	m_alignedClouds.clear();
 	m_referenceCloud = nullptr;
 
-	//get selected pointclouds
+	// get selected pointclouds
 	std::vector<ccPointCloud*> clouds;
 	clouds.reserve(m_selectedEntities.size());
 	for (ccHObject* entity : m_selectedEntities)
 	{
-		//clouds only
+		// clouds only
 		if (entity->isA(CC_TYPES::POINT_CLOUD))
 		{
 			ccPointCloud* cloud = ccHObjectCaster::ToPointCloud(entity);
@@ -235,7 +236,7 @@ int FastGlobalRegistrationFilter::compute()
 		return InvalidInput;
 	}
 
-	//compute the feature vector for the reference cloud
+	// compute the feature vector for the reference cloud
 	fgr::Features referenceFeatures;
 	if (!ComputeFeatures(m_referenceCloud, referenceFeatures, m_featureRadius))
 	{
@@ -243,14 +244,14 @@ int FastGlobalRegistrationFilter::compute()
 		return ComputationError;
 	}
 
-	//convert the reference cloud to vectors of Eigen::Vector3f
+	// convert the reference cloud to vectors of Eigen::Vector3f
 	fgr::Points referencePoints;
 	if (!ConverFromTo(*m_referenceCloud, referencePoints))
 	{
 		return NotEnoughMemory;
 	}
 
-	//now for each aligned cloud
+	// now for each aligned cloud
 	for (ccPointCloud* alignedCloud : m_alignedClouds)
 	{
 		if (!alignedCloud->hasNormals())
@@ -259,7 +260,7 @@ int FastGlobalRegistrationFilter::compute()
 			return InvalidInput;
 		}
 
-		//now compute the feature vector
+		// now compute the feature vector
 		fgr::Features alignedFeatures;
 		if (!ComputeFeatures(alignedCloud, alignedFeatures, m_featureRadius))
 		{
@@ -267,7 +268,7 @@ int FastGlobalRegistrationFilter::compute()
 			return ComputationError;
 		}
 
-		//now convert the cloud to vectors of Eigen::Vector3f
+		// now convert the cloud to vectors of Eigen::Vector3f
 		fgr::Points alignedPoints;
 		if (!ConverFromTo(*alignedCloud, alignedPoints))
 		{
@@ -304,7 +305,7 @@ int FastGlobalRegistrationFilter::compute()
 		alignedCloud->applyRigidTransformation(ccTrans);
 
 		ccLog::Print(tr("[Fast Global Registration] Resulting matrix for cloud %1").arg(alignedCloud->getName()));
-		ccLog::Print(ccTrans.toString(12, ' ')); //full precision
+		ccLog::Print(ccTrans.toString(12, ' ')); // full precision
 		ccLog::Print(tr("Hint: copy it (CTRL+C) and apply it - or its inverse - on any entity with the 'Edit > Apply transformation' tool"));
 
 		Q_EMIT entityHasChanged(alignedCloud);

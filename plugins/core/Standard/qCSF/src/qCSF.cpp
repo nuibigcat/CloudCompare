@@ -1,72 +1,72 @@
-﻿//#######################################################################################
-//#                                                                                     #
-//#                              CLOUDCOMPARE PLUGIN: qCSF                              #
-//#                                                                                     #
-//#        This program is free software; you can redistribute it and/or modify         #
-//#        it under the terms of the GNU General Public License as published by         #
-//#        the Free Software Foundation; version 2 or later of the License.             #
-//#                                                                                     #
-//#        This program is distributed in the hope that it will be useful,              #
-//#        but WITHOUT ANY WARRANTY; without even the implied warranty of               #
-//#        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                 #
-//#        GNU General Public License for more details.                                 #
-//#                                                                                     #
-//#        Please cite the following paper, If you use this plugin in your work.        #
-//#                                                                                     #
-//#  Zhang W, Qi J, Wan P, Wang H, Xie D, Wang X, Yan G. An Easy-to-Use Airborne LiDAR  #
-//#  Data Filtering Method Based on Cloth Simulation. Remote Sensing. 2016; 8(6):501.   #
-//#                                                                                     #
-//#                                     Copyright ©                                     #
-//#               RAMM laboratory, School of Geography, Beijing Normal University       #
-//#                               (http://ramm.bnu.edu.cn/)                             #
-//#                                                                                     #
-//#                      Wuming Zhang; Jianbo Qi; Peng Wan; Hongtao Wang                #
-//#                                                                                     #
-//#                      contact us: 2009zwm@gmail.com; wpqjbzwm@126.com                #
-//#                                                                                     #
-//#######################################################################################
+﻿// #######################################################################################
+// #                                                                                     #
+// #                              CLOUDCOMPARE PLUGIN: qCSF                              #
+// #                                                                                     #
+// #        This program is free software; you can redistribute it and/or modify         #
+// #        it under the terms of the GNU General Public License as published by         #
+// #        the Free Software Foundation; version 2 or later of the License.             #
+// #                                                                                     #
+// #        This program is distributed in the hope that it will be useful,              #
+// #        but WITHOUT ANY WARRANTY; without even the implied warranty of               #
+// #        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                 #
+// #        GNU General Public License for more details.                                 #
+// #                                                                                     #
+// #        Please cite the following paper, If you use this plugin in your work.        #
+// #                                                                                     #
+// #  Zhang W, Qi J, Wan P, Wang H, Xie D, Wang X, Yan G. An Easy-to-Use Airborne LiDAR  #
+// #  Data Filtering Method Based on Cloth Simulation. Remote Sensing. 2016; 8(6):501.   #
+// #                                                                                     #
+// #                                     Copyright ©                                     #
+// #               RAMM laboratory, School of Geography, Beijing Normal University       #
+// #                               (http://ramm.bnu.edu.cn/)                             #
+// #                                                                                     #
+// #                      Wuming Zhang; Jianbo Qi; Peng Wan; Hongtao Wang                #
+// #                                                                                     #
+// #                      contact us: 2009zwm@gmail.com; wpqjbzwm@126.com                #
+// #                                                                                     #
+// #######################################################################################
 
 // A mex version for programming in Matlab is at File Exchange of Mathworks website:
 // http://www.mathworks.com/matlabcentral/fileexchange/58139-csf--ground-filtering-of-point-cloud-based-on-cloth-simulation
 
 #include "qCSF.h"
 
-//Qt
+// Qt
 #include <QApplication>
-#include <QProgressDialog>
-#include <QMainWindow>
 #include <QComboBox>
 #include <QElapsedTimer>
+#include <QMainWindow>
+#include <QProgressDialog>
 
-//Dialog
+// Dialog
 #include "ccCSFDlg.h"
 
-//Local
+// Local
 #include "qCSFCommands.h"
 
-//System
-#include <iostream>
-#include <vector>
-#include <string>
+// System
 #include <assert.h>
+#include <iostream>
+#include <string>
+#include <vector>
 
-//qCC_db
+// qCC_db
 #include <ccGenericPointCloud.h>
+#include <ccHObjectCaster.h>
+#include <ccMesh.h>
+#include <ccOctree.h>
 #include <ccPointCloud.h>
 #include <ccProgressDialog.h>
-#include <ccHObjectCaster.h>
-#include <ccOctree.h>
-#include <ccMesh.h>
 
-//CSF
+// CSF
 #include <CSF.h>
 
 qCSF::qCSF(QObject* parent)
-	: QObject(parent)
-	, ccStdPluginInterface(":/CC/plugin/qCSF/info.json")
-	, m_action(nullptr)
+    : QObject(parent)
+    , ccStdPluginInterface(":/CC/plugin/qCSF/info.json")
+    , m_action(nullptr)
 {
-}	
+}
 
 void qCSF::onNewSelection(const ccHObject::Container& selectedEntities)
 {
@@ -85,19 +85,19 @@ void qCSF::onNewSelection(const ccHObject::Container& selectedEntities)
 	}
 }
 
-QList<QAction *> qCSF::getActions()
+QList<QAction*> qCSF::getActions()
 {
 	if (!m_action)
 	{
-		m_action = new QAction(getName(),this);
+		m_action = new QAction(getName(), this);
 		m_action->setToolTip(getDescription());
 		m_action->setIcon(getIcon());
 
-		//connect appropriate signal
+		// connect appropriate signal
 		connect(m_action, &QAction::triggered, this, &qCSF::doAction);
 	}
 
-	return { m_action };
+	return {m_action};
 }
 
 void qCSF::doAction()
@@ -118,12 +118,12 @@ void qCSF::doAction()
 	}
 
 	// initial dialog parameters (semi-persitent)
-	static bool PostProcessing = false;
+	static bool   PostProcessing  = false;
 	static double ClothResolution = 2.0;
-	static double ClassThreshold = 0.5;
-	static int Rigidness = 2;
-	static int MaxIteration = 500;
-	static bool ExportClothMesh = false;
+	static double ClassThreshold  = 0.5;
+	static int    Rigidness       = 2;
+	static int    MaxIteration    = 500;
+	static bool   ExportClothMesh = false;
 
 	// display the dialog
 	{
@@ -150,20 +150,20 @@ void qCSF::doAction()
 			Rigidness = 2;
 		else
 			Rigidness = 3;
-		MaxIteration = csfDlg.MaxIterationSpinBox->value();
+		MaxIteration    = csfDlg.MaxIterationSpinBox->value();
 		ClothResolution = csfDlg.cloth_resolutionSpinBox->value();
-		ClassThreshold = csfDlg.class_thresholdSpinBox->value();
+		ClassThreshold  = csfDlg.class_thresholdSpinBox->value();
 		ExportClothMesh = csfDlg.exportClothMeshCheckBox->isChecked();
 	}
 
 	// setup parameter
 	CSF::Parameters csfParams;
 	{
-		csfParams.smoothSlope = PostProcessing;
-		csfParams.class_threshold = ClassThreshold;
+		csfParams.smoothSlope      = PostProcessing;
+		csfParams.class_threshold  = ClassThreshold;
 		csfParams.cloth_resolution = ClothResolution;
-		csfParams.rigidness = Rigidness;
-		csfParams.iterations = MaxIteration;
+		csfParams.rigidness        = Rigidness;
+		csfParams.iterations       = MaxIteration;
 	}
 
 	// display the progress dialog
@@ -185,17 +185,17 @@ void qCSF::doAction()
 		// to get the point cloud from selected entity.
 		ccPointCloud* pc = static_cast<ccPointCloud*>(ent);
 
-		ccPointCloud* groundCloud = nullptr;
+		ccPointCloud* groundCloud    = nullptr;
 		ccPointCloud* offGroundCloud = nullptr;
-		ccMesh* clothMesh = nullptr;
+		ccMesh*       clothMesh      = nullptr;
 
 		if (!CSF::Apply(pc,
-						csfParams,
-						groundCloud,
-						offGroundCloud,
-						ExportClothMesh,
-						clothMesh,
-						m_app))
+		                csfParams,
+		                groundCloud,
+		                offGroundCloud,
+		                ExportClothMesh,
+		                clothMesh,
+		                m_app))
 		{
 			m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			return;

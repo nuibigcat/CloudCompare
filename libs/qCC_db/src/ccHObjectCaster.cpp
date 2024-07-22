@@ -1,28 +1,29 @@
-//##########################################################################
-//#                                                                        #
-//#                              CLOUDCOMPARE                              #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                              CLOUDCOMPARE                              #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
+// #                                                                        #
+// ##########################################################################
 
 #include "ccHObjectCaster.h"
 
-//types
+// types
 #include "cc2DLabel.h"
 #include "cc2DViewportLabel.h"
 #include "cc2DViewportObject.h"
 #include "ccCameraSensor.h"
 #include "ccCone.h"
+#include "ccCoordinateSystem.h"
 #include "ccCylinder.h"
 #include "ccDish.h"
 #include "ccExtru.h"
@@ -44,7 +45,6 @@
 #include "ccSphere.h"
 #include "ccSubMesh.h"
 #include "ccTorus.h"
-#include "ccCoordinateSystem.h"
 
 /*** helpers ***/
 
@@ -66,7 +66,7 @@ ccPointCloud* ccHObjectCaster::ToPointCloud(ccHObject* obj, bool* lockedVertices
 			ccGenericPointCloud* vertices = static_cast<ccGenericMesh*>(obj)->getAssociatedCloud();
 			if (vertices)
 			{
-				if (!obj->isA(CC_TYPES::MESH) && lockedVertices) //no need to 'lock' the vertices if the user works on the parent mesh
+				if (!obj->isA(CC_TYPES::MESH) && lockedVertices) // no need to 'lock' the vertices if the user works on the parent mesh
 				{
 					*lockedVertices = vertices->isLocked();
 				}
@@ -78,7 +78,7 @@ ccPointCloud* ccHObjectCaster::ToPointCloud(ccHObject* obj, bool* lockedVertices
 	return nullptr;
 }
 
-ccGenericPointCloud* ccHObjectCaster::ToGenericPointCloud(ccHObject* obj, bool* lockedVertices/*=nullptr*/)
+ccGenericPointCloud* ccHObjectCaster::ToGenericPointCloud(ccHObject* obj, bool* lockedVertices /*=nullptr*/)
 {
 	if (lockedVertices)
 	{
@@ -96,7 +96,7 @@ ccGenericPointCloud* ccHObjectCaster::ToGenericPointCloud(ccHObject* obj, bool* 
 			ccGenericPointCloud* vertices = static_cast<ccGenericMesh*>(obj)->getAssociatedCloud();
 			if (vertices)
 			{
-				if (!obj->isA(CC_TYPES::MESH) && lockedVertices) //no need to 'lock' the vertices if the user works on the parent mesh
+				if (!obj->isA(CC_TYPES::MESH) && lockedVertices) // no need to 'lock' the vertices if the user works on the parent mesh
 				{
 					*lockedVertices = vertices->isLocked();
 				}
@@ -105,7 +105,7 @@ ccGenericPointCloud* ccHObjectCaster::ToGenericPointCloud(ccHObject* obj, bool* 
 		}
 		else if (obj->isKindOf(CC_TYPES::POLY_LINE))
 		{
-			ccPolyline* poly = static_cast<ccPolyline*>(obj);
+			ccPolyline*          poly     = static_cast<ccPolyline*>(obj);
 			ccGenericPointCloud* vertices = dynamic_cast<ccGenericPointCloud*>(poly->getAssociatedCloud());
 			if (lockedVertices)
 			{
@@ -118,7 +118,7 @@ ccGenericPointCloud* ccHObjectCaster::ToGenericPointCloud(ccHObject* obj, bool* 
 	return nullptr;
 }
 
-ccShiftedObject* ccHObjectCaster::ToShifted(ccHObject* obj, bool* lockedVertices/*=nullptr*/)
+ccShiftedObject* ccHObjectCaster::ToShifted(ccHObject* obj, bool* lockedVertices /*=nullptr*/)
 {
 	ccGenericPointCloud* cloud = ToGenericPointCloud(obj, lockedVertices);
 	if (cloud)
@@ -182,37 +182,37 @@ ccGenericPrimitive* ccHObjectCaster::ToPrimitive(ccHObject* obj)
 	return obj && obj->isKindOf(CC_TYPES::PRIMITIVE) ? static_cast<ccGenericPrimitive*>(obj) : nullptr;
 }
 
-ccSphere*	ccHObjectCaster::ToSphere(ccHObject* obj)
+ccSphere* ccHObjectCaster::ToSphere(ccHObject* obj)
 {
 	return obj && obj->isA(CC_TYPES::SPHERE) ? static_cast<ccSphere*>(obj) : nullptr;
 }
 
-ccCylinder*	ccHObjectCaster::ToCylinder(ccHObject* obj)
+ccCylinder* ccHObjectCaster::ToCylinder(ccHObject* obj)
 {
 	return obj && obj->isA(CC_TYPES::CYLINDER) ? static_cast<ccCylinder*>(obj) : nullptr;
 }
 
-ccCone*		ccHObjectCaster::ToCone(ccHObject* obj)
+ccCone* ccHObjectCaster::ToCone(ccHObject* obj)
 {
 	return obj && obj->isKindOf(CC_TYPES::CONE) ? static_cast<ccCone*>(obj) : nullptr;
 }
 
-ccPlane*	ccHObjectCaster::ToPlane(ccHObject* obj)
+ccPlane* ccHObjectCaster::ToPlane(ccHObject* obj)
 {
 	return obj && obj->isA(CC_TYPES::PLANE) ? static_cast<ccPlane*>(obj) : nullptr;
 }
 
-ccDish*		ccHObjectCaster::ToDish(ccHObject* obj)
+ccDish* ccHObjectCaster::ToDish(ccHObject* obj)
 {
 	return obj && obj->isA(CC_TYPES::DISH) ? static_cast<ccDish*>(obj) : nullptr;
 }
 
-ccExtru*	ccHObjectCaster::ToExtru(ccHObject* obj)
+ccExtru* ccHObjectCaster::ToExtru(ccHObject* obj)
 {
 	return obj && obj->isA(CC_TYPES::EXTRU) ? static_cast<ccExtru*>(obj) : nullptr;
 }
 
-ccTorus*	ccHObjectCaster::ToTorus(ccHObject* obj)
+ccTorus* ccHObjectCaster::ToTorus(ccHObject* obj)
 {
 	return obj && obj->isA(CC_TYPES::TORUS) ? static_cast<ccTorus*>(obj) : nullptr;
 }
@@ -278,11 +278,11 @@ ccCoordinateSystem* ccHObjectCaster::ToCoordinateSystem(ccHObject* obj)
 	return (obj && obj->isKindOf(CC_TYPES::COORDINATESYSTEM) ? static_cast<ccCoordinateSystem*>(obj) : nullptr);
 }
 
-bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
-									ccHObject* destEntity,
-									std::vector<int>* newPointOrTriangleIndex/*=nullptr*/,
-									const ccHObject* sourceEntityProxy/*=nullptr*/,
-									ccHObject* destEntityProxy/*=nullptr*/)
+bool ccHObjectCaster::CloneChildren(const ccHObject*  sourceEntity,
+                                    ccHObject*        destEntity,
+                                    std::vector<int>* newPointOrTriangleIndex /*=nullptr*/,
+                                    const ccHObject*  sourceEntityProxy /*=nullptr*/,
+                                    ccHObject*        destEntityProxy /*=nullptr*/)
 {
 	if (!sourceEntity || !destEntity)
 	{
@@ -290,12 +290,12 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 		return false;
 	}
 
-	bool sourceIsCloud = sourceEntity->isKindOf(CC_TYPES::POINT_CLOUD);
-	bool destIsCloud = destEntity->isKindOf(CC_TYPES::POINT_CLOUD);
+	bool sourceIsCloud         = sourceEntity->isKindOf(CC_TYPES::POINT_CLOUD);
+	bool destIsCloud           = destEntity->isKindOf(CC_TYPES::POINT_CLOUD);
 	bool sourceAndDestAreCloud = sourceIsCloud && destIsCloud;
 
-	bool sourceIsMesh = sourceEntity->isKindOf(CC_TYPES::MESH);
-	bool destIsMesh = destEntity->isKindOf(CC_TYPES::MESH);
+	bool sourceIsMesh           = sourceEntity->isKindOf(CC_TYPES::MESH);
+	bool destIsMesh             = destEntity->isKindOf(CC_TYPES::MESH);
 	bool sourceAndDestAreMeshes = sourceIsMesh && destIsMesh;
 
 	unsigned numberOfPointOrTriangle = 0;
@@ -328,20 +328,20 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 	QMap<ccCameraSensor*, ccCameraSensor*> clonedCameraSensors;
 
 	const ccHObject* currentSourceEntity = (sourceEntityProxy ? sourceEntityProxy : sourceEntity);
-	ccHObject* currentDestEntity = (destEntityProxy ? destEntityProxy : destEntity);
+	ccHObject*       currentDestEntity   = (destEntityProxy ? destEntityProxy : destEntity);
 
 	// for each child
 	for (unsigned i = 0; i < currentSourceEntity->getChildrenNumber(); ++i)
 	{
 		ccHObject* child = currentSourceEntity->getChild(i);
-		
+
 		switch (child->getClassID())
 		{
 		// 2D Label
 		case CC_TYPES::LABEL_2D:
 		{
 			cc2DLabel* label = static_cast<cc2DLabel*>(child);
-			
+
 			// check if we can keep this label
 			bool keepThisLabel = true;
 			if (newPointOrTriangleIndex)
@@ -371,7 +371,7 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 							pp._cloud = static_cast<ccGenericPointCloud*>(destEntity);
 						else
 							pp._mesh = static_cast<ccGenericMesh*>(destEntity);
-						
+
 						if (newPointOrTriangleIndex)
 						{
 							pp.index = static_cast<unsigned>(newPointOrTriangleIndex->at(pp.index)); // we've checked above that it's >= 0
@@ -379,8 +379,8 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 					}
 					clonedLabel->addPickedPoint(pp);
 				}
-				clonedLabel->setName(label->getName()); //the label name is overridden by calls to addPickedPoint
-				
+				clonedLabel->setName(label->getName()); // the label name is overridden by calls to addPickedPoint
+
 				currentDestEntity->addChild(clonedLabel);
 			}
 		}
@@ -389,7 +389,7 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 		// Image
 		case CC_TYPES::IMAGE:
 		{
-			ccImage* image = static_cast<ccImage*>(child);
+			ccImage* image       = static_cast<ccImage*>(child);
 			ccImage* clonedImage = new ccImage(*image, false);
 
 			ccCameraSensor* camSensor = image->getAssociatedSensor();
@@ -419,7 +419,7 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 		// Camera sensor
 		case CC_TYPES::CAMERA_SENSOR:
 		{
-			ccCameraSensor* camSensor = static_cast<ccCameraSensor*>(child);
+			ccCameraSensor* camSensor       = static_cast<ccCameraSensor*>(child);
 			ccCameraSensor* clonedCamSensor = new ccCameraSensor(*camSensor);
 			clonedCameraSensors.insert(camSensor, clonedCamSensor);
 
@@ -430,7 +430,7 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 		// GBL sensor
 		case CC_TYPES::GBL_SENSOR:
 		{
-			ccGBLSensor* gblSensor = static_cast<ccGBLSensor*>(child);
+			ccGBLSensor* gblSensor       = static_cast<ccGBLSensor*>(child);
 			ccGBLSensor* clonedGBLSensor = new ccGBLSensor(*gblSensor, false);
 
 			currentDestEntity->addChild(clonedGBLSensor);
@@ -440,9 +440,10 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 		// 2D Viewport object
 		case CC_TYPES::VIEWPORT_2D_OBJECT:
 		{
-			cc2DViewportObject* viewportObject = static_cast<cc2DViewportObject*>(child);;
+			cc2DViewportObject* viewportObject = static_cast<cc2DViewportObject*>(child);
+			;
 			cc2DViewportObject* clonedViewportObject = new cc2DViewportObject(*viewportObject);
-			
+
 			currentDestEntity->addChild(clonedViewportObject);
 		}
 		break;
@@ -450,7 +451,8 @@ bool ccHObjectCaster::CloneChildren(const ccHObject* sourceEntity,
 		// 2D Viewport label
 		case CC_TYPES::VIEWPORT_2D_LABEL:
 		{
-			cc2DViewportLabel* viewportLabel = static_cast<cc2DViewportLabel*>(child);;
+			cc2DViewportLabel* viewportLabel = static_cast<cc2DViewportLabel*>(child);
+			;
 			cc2DViewportLabel* clonedViewportLabel = new cc2DViewportLabel(*viewportLabel);
 
 			currentDestEntity->addChild(clonedViewportLabel);

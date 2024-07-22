@@ -1,29 +1,29 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qFacets                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                      COPYRIGHT: Thomas Dewez, BRGM                     #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qFacets                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                      COPYRIGHT: Thomas Dewez, BRGM                     #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef QFACET_FAST_MARCHING_FOR_FACET_EXTRACTION_HEADER
 #define QFACET_FAST_MARCHING_FOR_FACET_EXTRACTION_HEADER
 
-//CCCoreLib
+// CCCoreLib
+#include <DistanceComputationTools.h>
 #include <FastMarching.h>
 #include <GenericProgressCallback.h>
-#include <DistanceComputationTools.h>
 
-//qCC_db
+// qCC_db
 #include <ccAdvancedTypes.h>
 
 class ccGenericPointCloud;
@@ -31,19 +31,18 @@ class ccPointCloud;
 
 //! Fast Marching algorithm for planar facets extraction (qFacets plugin)
 /** Extends the FastMarching class.
-**/
+ **/
 class FastMarchingForFacetExtraction : public CCCoreLib::FastMarching
 {
-public:
-
+  public:
 	//! Static entry point (helper)
-	static int ExtractPlanarFacets(	ccPointCloud* theCloud,
-									unsigned char octreeLevel,
-									ScalarType maxError,
-									CCCoreLib::DistanceComputationTools::ERROR_MEASURES errorMeasure,
-									bool useRetroProjectionError = true,
-									CCCoreLib::GenericProgressCallback* progressCb = nullptr,
-									CCCoreLib::DgmOctree* _theOctree = nullptr);
+	static int ExtractPlanarFacets(ccPointCloud*                                       theCloud,
+	                               unsigned char                                       octreeLevel,
+	                               ScalarType                                          maxError,
+	                               CCCoreLib::DistanceComputationTools::ERROR_MEASURES errorMeasure,
+	                               bool                                                useRetroProjectionError = true,
+	                               CCCoreLib::GenericProgressCallback*                 progressCb              = nullptr,
+	                               CCCoreLib::DgmOctree*                               _theOctree              = nullptr);
 
 	//! Default constructor
 	FastMarchingForFacetExtraction();
@@ -53,54 +52,60 @@ public:
 
 	//! Initializes the grid with a point cloud (and ist corresponding octree)
 	/** The points should be associated to an (active) scalar field.
-		The Fast Marching grid will have the same dimensions as
-		the input octree considered at a given level of subdivision.
-		\param theOctree an octree, associated to a point cloud
-		\param gridLevel the level of subdivision
-		\param maxError maximum error allowed by 'propagated' facet
-		\param errorMeasure error measure
-		\param useRetroProjectionError whether to use retro-projection error in propagation
-		\param progressCb progeress callback
-		\return a negative value if something went wrong
+	    The Fast Marching grid will have the same dimensions as
+	    the input octree considered at a given level of subdivision.
+	    \param theOctree an octree, associated to a point cloud
+	    \param gridLevel the level of subdivision
+	    \param maxError maximum error allowed by 'propagated' facet
+	    \param errorMeasure error measure
+	    \param useRetroProjectionError whether to use retro-projection error in propagation
+	    \param progressCb progeress callback
+	    \return a negative value if something went wrong
 	**/
-	int init(	CCCoreLib::DgmOctree* theOctree,
-				unsigned char gridLevel,
-				ScalarType maxError,
-				CCCoreLib::DistanceComputationTools::ERROR_MEASURES errorMeasure,
-				bool useRetroProjectionError,
-				CCCoreLib::GenericProgressCallback* progressCb = nullptr);
+	int init(CCCoreLib::DgmOctree*                               theOctree,
+	         unsigned char                                       gridLevel,
+	         ScalarType                                          maxError,
+	         CCCoreLib::DistanceComputationTools::ERROR_MEASURES errorMeasure,
+	         bool                                                useRetroProjectionError,
+	         CCCoreLib::GenericProgressCallback*                 progressCb = nullptr);
 
 	//! Updates a list of point flags, indicating the points alreay processed
 	/** \return the number of newly flagged points
-	**/
-	unsigned updateFlagsTable(	ccGenericPointCloud* theCloud,
-								std::vector<unsigned char>& flags,
-								unsigned facetIndex);
+	 **/
+	unsigned updateFlagsTable(ccGenericPointCloud*        theCloud,
+	                          std::vector<unsigned char>& flags,
+	                          unsigned                    facetIndex);
 
 	//! Sets the propagation progress callback
-	void setPropagateCallback(CCCoreLib::GenericProgressCallback* propagateProgressCb) { m_propagateProgressCb = propagateProgressCb; m_propagateProgress = 0; }
+	void setPropagateCallback(CCCoreLib::GenericProgressCallback* propagateProgressCb)
+	{
+		m_propagateProgressCb = propagateProgressCb;
+		m_propagateProgress   = 0;
+	}
 
-	//inherited methods (see FastMarchingAlgorithm)
-	virtual int propagate() override;
+	// inherited methods (see FastMarchingAlgorithm)
+	virtual int  propagate() override;
 	virtual bool setSeedCell(const Tuple3i& pos) override;
 
-protected:
-
+  protected:
 	//! A Fast Marching grid cell for planar facets extraction
 	class PlanarCell : public CCCoreLib::FastMarching::Cell
 	{
-	public:
+	  public:
 		//! Default constructor
 		PlanarCell()
-			: Cell()
-			, N(0, 0, 0)
-			, C(0, 0, 0)
-			, cellCode(0)
-			, planarError(0)
-		{}
+		    : Cell()
+		    , N(0, 0, 0)
+		    , C(0, 0, 0)
+		    , cellCode(0)
+		    , planarError(0)
+		{
+		}
 
 		///! Destructor
-		virtual ~PlanarCell() {}
+		virtual ~PlanarCell()
+		{
+		}
 
 		//! The local cell normal
 		CCVector3 N;
@@ -112,11 +117,14 @@ protected:
 		ScalarType planarError;
 	};
 
-	//inherited methods (see FastMarchingAlgorithm)
+	// inherited methods (see FastMarchingAlgorithm)
 	virtual float computeTCoefApprox(CCCoreLib::FastMarching::Cell* currentCell, CCCoreLib::FastMarching::Cell* neighbourCell) const override;
-	virtual int step() override;
-	virtual void initTrialCells() override;
-	virtual bool instantiateGrid(unsigned size) override { return instantiateGridTpl<PlanarCell*>(size); }
+	virtual int   step() override;
+	virtual void  initTrialCells() override;
+	virtual bool  instantiateGrid(unsigned size) override
+	{
+		return instantiateGridTpl<PlanarCell*>(size);
+	}
 
 	//! Adds a given cell's points to the current facet and returns the resulting RMS
 	ScalarType addCellToCurrentFacet(unsigned index);
@@ -142,4 +150,4 @@ protected:
 	unsigned m_propagateProgress;
 };
 
-#endif //QFACET_FAST_MARCHING_FOR_FACET_EXTRACTION_HEADER
+#endif // QFACET_FAST_MARCHING_FOR_FACET_EXTRACTION_HEADER

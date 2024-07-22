@@ -1,26 +1,27 @@
 #include "../include/ccCloudLayersHelper.h"
+
 #include "../include/ccMouseCircle.h"
 
-//CC
+// CC
+#include <ccMainAppInterface.h>
 #include <ccPointCloud.h>
 #include <ccScalarField.h>
-#include <ccMainAppInterface.h>
 
-//QT
+// QT
 #include <QStringList>
 
-//System
+// System
 #include <thread>
 
 ccCloudLayersHelper::ccCloudLayersHelper(ccMainAppInterface* app, ccPointCloud* cloud)
-	: m_app ( app )
-	, m_cloud( cloud )
-	, m_formerCloudColors( nullptr )
-	, m_formerCloudColorsWereShown( false )
-	, m_formerCloudSFWasShown( false )
-	, m_parameters{}
-	, m_scalarFieldIndex( 0 )
-	, m_modified( false )
+    : m_app(app)
+    , m_cloud(cloud)
+    , m_formerCloudColors(nullptr)
+    , m_formerCloudColorsWereShown(false)
+    , m_formerCloudSFWasShown(false)
+    , m_parameters{}
+    , m_scalarFieldIndex(0)
+    , m_modified(false)
 {
 	if (m_cloud)
 	{
@@ -28,7 +29,7 @@ ccCloudLayersHelper::ccCloudLayersHelper(ccMainAppInterface* app, ccPointCloud* 
 		m_pointInFrustum.resize(m_cloud->size());
 
 		m_formerCloudColorsWereShown = m_cloud->colorsShown();
-		m_formerCloudSFWasShown = m_cloud->sfShown();
+		m_formerCloudSFWasShown      = m_cloud->sfShown();
 
 		if (m_cloud->hasColors())
 		{
@@ -72,7 +73,7 @@ ccCloudLayersHelper::~ccCloudLayersHelper()
 		{
 			m_cloud->unallocateColors();
 		}
-		
+
 		m_cloud->showColors(m_formerCloudColorsWereShown);
 		m_cloud->showSF(m_formerCloudSFWasShown);
 		m_cloud->redrawDisplay();
@@ -82,7 +83,7 @@ ccCloudLayersHelper::~ccCloudLayersHelper()
 
 QStringList ccCloudLayersHelper::getScalarFields()
 {
-	unsigned sfCount = m_cloud->getNumberOfScalarFields();
+	unsigned    sfCount = m_cloud->getNumberOfScalarFields();
 	QStringList scalarFields;
 	if (m_cloud->hasScalarFields())
 	{
@@ -111,7 +112,7 @@ void ccCloudLayersHelper::setVisible(bool value)
 	for (unsigned i = 0; i < pointCount; ++i)
 	{
 		ccColor::Rgba color = m_cloud->getPointColor(i);
-		color.a = value ? ccColor::MAX : 0;
+		color.a             = value ? ccColor::MAX : 0;
 		m_cloud->setPointColor(i, color);
 	}
 
@@ -129,21 +130,21 @@ void ccCloudLayersHelper::apply(QList<ccAsprsModel::AsprsItem>& items)
 	{
 		items[i].count = apply(items[i]);
 	}
-	
+
 	m_cloud->redrawDisplay();
 }
 
 int ccCloudLayersHelper::apply(ccAsprsModel::AsprsItem& item, bool redrawDisplay)
 {
-	ccColor::Rgba ccColor = ccColor::FromQColora(item.color);
-	ccColor.a = item.visible ? ccColor::MAX : 0;
+	ccColor::Rgba ccColor      = ccColor::FromQColora(item.color);
+	ccColor.a                  = item.visible ? ccColor::MAX : 0;
 	CCCoreLib::ScalarField* sf = m_cloud->getScalarField(m_scalarFieldIndex);
 	if (!sf)
 		return 0;
 
-	ScalarType code = static_cast<ScalarType>(item.code);
-	int affected = 0;
-	int counter = 0;
+	ScalarType code     = static_cast<ScalarType>(item.code);
+	int        affected = 0;
+	int        counter  = 0;
 	for (auto it = sf->begin(); it != sf->end(); ++it, ++counter)
 	{
 		if ((*it) == code)
@@ -165,8 +166,8 @@ void ccCloudLayersHelper::changeCode(const ccAsprsModel::AsprsItem& item, Scalar
 	if (!sf)
 		return;
 
-	ScalarType code = static_cast<ScalarType>(item.code);
-	int counter = 0;
+	ScalarType code    = static_cast<ScalarType>(item.code);
+	int        counter = 0;
 	for (auto it = sf->begin(); it != sf->end(); ++it, ++counter)
 	{
 		if ((*it) == oldCode)
@@ -182,12 +183,12 @@ int ccCloudLayersHelper::moveItem(const ccAsprsModel::AsprsItem& from, const ccA
 	if (!sf)
 		return 0;
 
-	ScalarType code = static_cast<ScalarType>(from.code);
-	ScalarType emptyCode = to != nullptr ? static_cast<ScalarType>(to->code) : static_cast<ScalarType>(0);
-	const ccColor::Rgba color = to != nullptr ? ccColor::FromQColora(to->color) : ccColor::black;
+	ScalarType          code      = static_cast<ScalarType>(from.code);
+	ScalarType          emptyCode = to != nullptr ? static_cast<ScalarType>(to->code) : static_cast<ScalarType>(0);
+	const ccColor::Rgba color     = to != nullptr ? ccColor::FromQColora(to->color) : ccColor::black;
 
 	int affected = 0;
-	int counter = 0;
+	int counter  = 0;
 	for (auto it = sf->begin(); it != sf->end(); ++it, ++counter)
 	{
 		if ((*it) == code)
@@ -248,13 +249,13 @@ void ccCloudLayersHelper::project(const ccGLCameraParameters& camera, unsigned s
 	const double half_h = camera.viewport[3] / 2.0;
 
 	CCVector3d Q2D;
-	bool pointInFrustum = false;
+	bool       pointInFrustum = false;
 	for (unsigned i = start; i < end; ++i)
 	{
 		const CCVector3* P3D = m_cloud->getPoint(i);
 		camera.project(*P3D, Q2D, &pointInFrustum);
 		m_projectedPoints[i] = CCVector2(static_cast<PointCoordinateType>(Q2D.x - half_w), static_cast<PointCoordinateType>(Q2D.y - half_h));
-		m_pointInFrustum[i] = pointInFrustum;
+		m_pointInFrustum[i]  = pointInFrustum;
 	}
 }
 
@@ -265,8 +266,7 @@ PointCoordinateType ccCloudLayersHelper::ComputeSquaredEuclideanDistance(const C
 
 void ccCloudLayersHelper::mouseMove(const CCVector2& center, float squareDist, std::map<ScalarType, int>& affected)
 {
-	if (m_parameters.output == nullptr ||
-		((!m_parameters.anyPoints && !m_parameters.visiblePoints) && m_parameters.input == nullptr))
+	if (m_parameters.output == nullptr || ((!m_parameters.anyPoints && !m_parameters.visiblePoints) && m_parameters.input == nullptr))
 	{
 		return;
 	}
@@ -275,10 +275,10 @@ void ccCloudLayersHelper::mouseMove(const CCVector2& center, float squareDist, s
 	if (!sf)
 		return;
 
-	ScalarType inputCode = m_parameters.input != nullptr ? static_cast<ScalarType>(m_parameters.input->code) : 0;
+	ScalarType inputCode  = m_parameters.input != nullptr ? static_cast<ScalarType>(m_parameters.input->code) : 0;
 	ScalarType outputCode = static_cast<ScalarType>(m_parameters.output->code);
 
-	unsigned char alpha = m_parameters.output->visible ? ccColor::MAX : 0;
+	unsigned char alpha       = m_parameters.output->visible ? ccColor::MAX : 0;
 	ccColor::Rgba outputColor = ccColor::Rgba(ccColor::FromQColor(m_parameters.output->color), alpha);
 
 	unsigned cloudSize = m_cloud->size();
@@ -303,7 +303,7 @@ void ccCloudLayersHelper::mouseMove(const CCVector2& center, float squareDist, s
 		// skip circle outside point
 		if (ComputeSquaredEuclideanDistance(center, m_projectedPoints[i]) > squareDist)
 			continue;
-		
+
 		if (code != outputCode)
 		{
 			sf->setValue(i, outputCode);
@@ -312,10 +312,10 @@ void ccCloudLayersHelper::mouseMove(const CCVector2& center, float squareDist, s
 			--affected[code];
 			++affected[outputCode];
 		}
-	
+
 		m_modified = true;
 	}
-	
+
 	m_cloud->redrawDisplay();
 }
 
@@ -323,8 +323,8 @@ void ccCloudLayersHelper::projectCloud(const ccGLCameraParameters& camera)
 {
 	// check camera parameters changes
 	bool hasChanges = false;
-	auto a = m_cameraParameters.modelViewMat.data();
-	auto b = camera.modelViewMat.data();
+	auto a          = m_cameraParameters.modelViewMat.data();
+	auto b          = camera.modelViewMat.data();
 	for (int i = 0; i < OPENGL_MATRIX_SIZE; ++i)
 	{
 		if (std::abs(a[i] - b[i]) > 1e-6)
@@ -344,13 +344,13 @@ void ccCloudLayersHelper::projectCloud(const ccGLCameraParameters& camera)
 	if (processorCount == 0)
 		processorCount = 1;
 
-	const size_t part_size = cloudSize / processorCount;
+	const size_t              part_size = cloudSize / processorCount;
 	std::vector<std::thread*> threads;
 	threads.resize(processorCount, nullptr);
 	for (unsigned i = 0; i < processorCount; ++i)
 	{
 		size_t start = i * part_size;
-		size_t end = start + part_size;
+		size_t end   = start + part_size;
 
 		if (i == processorCount - 1)
 			end = cloudSize;

@@ -29,29 +29,29 @@
 
 #include "FastGlobalRegistration.h"
 
-#pragma warning( push )
-#pragma warning( disable : 4267 )
-#pragma warning( disable : 4244 )
+#pragma warning(push)
+#pragma warning(disable : 4267)
+#pragma warning(disable : 4244)
 #include <flann/flann.hpp>
-#pragma warning( pop )
+#pragma warning(pop)
 
 #include <Eigen/Geometry>
-
 #include <ccLog.h>
 
-namespace fgr {
+namespace fgr
+{
 
 	typedef flann::Index<flann::L2<float>> KDTree;
-	typedef std::vector<int> Indexes;
-	typedef std::vector<float> Distances;
-}
+	typedef std::vector<int>               Indexes;
+	typedef std::vector<float>             Distances;
+} // namespace fgr
 
 using namespace Eigen;
 using namespace std;
 using namespace fgr;
 
-static constexpr int ReferenceIndex = 0; //reference index
-static constexpr int AlignedIndex = 1; //aligned index
+static constexpr int ReferenceIndex = 0; // reference index
+static constexpr int AlignedIndex   = 1; // aligned index
 
 void CApp::LoadFeature(const Points& pts, const Features& feat)
 {
@@ -65,7 +65,7 @@ template <typename T>
 static fgr::KDTree BuildKDTree(const vector<T>& data)
 {
 	const size_t rows = data.size();
-	const size_t dim = data.front().size();
+	const size_t dim  = data.front().size();
 
 	Distances dataset(rows * dim);
 	for (size_t i = 0; i < rows; i++)
@@ -73,28 +73,28 @@ static fgr::KDTree BuildKDTree(const vector<T>& data)
 			dataset[i * dim + j] = static_cast<float>(data[i][j]);
 
 	flann::Matrix<float> dataset_mat(dataset.data(), rows, dim);
-	KDTree tree(dataset_mat, flann::KDTreeSingleIndexParams(15));
+	KDTree               tree(dataset_mat, flann::KDTreeSingleIndexParams(15));
 	tree.buildIndex();
-	
+
 	return tree;
 }
 
 template <typename T>
-static void SearchKDTree(	fgr::KDTree& tree,
-							const T& input, 
-							int& nearestIndex,
-							float& smallestSquareDist)
+static void SearchKDTree(fgr::KDTree& tree,
+                         const T&     input,
+                         int&         nearestIndex,
+                         float&       smallestSquareDist)
 {
 	static const size_t Rows = 1;
-	static const size_t NN = 1;
-	const size_t cols = static_cast<size_t>(input.size());
+	static const size_t NN   = 1;
+	const size_t        cols = static_cast<size_t>(input.size());
 
 	Distances query(Rows * cols);
 	for (size_t i = 0; i < cols; i++)
 		query[i] = input(i);
 	flann::Matrix<float> query_mat(query.data(), Rows, cols);
 
-	flann::Matrix<int> indices_mat(&nearestIndex, Rows, NN);
+	flann::Matrix<int>   indices_mat(&nearestIndex, Rows, NN);
 	flann::Matrix<float> dists_mat(&smallestSquareDist, Rows, NN);
 
 	tree.knnSearch(query_mat, indices_mat, dists_mat, NN, flann::SearchParams(128));
@@ -110,27 +110,25 @@ static void TransformPoints(fgr::Points& points, const Eigen::Matrix4f& Trans)
 	for (size_t cnt = 0; cnt < npc; cnt++)
 	{
 		Vector3f temp = R * points[cnt] + t;
-		points[cnt] = temp;
+		points[cnt]   = temp;
 	}
 }
 
-static bool Similar(	const Eigen::Vector3f& ACloud1, const Eigen::Vector3f& BCloud1,
-						const Eigen::Vector3f& ACloud2, const Eigen::Vector3f& BCloud2,
-						double maxRelativeScaleDiff)
+static bool Similar(const Eigen::Vector3f& ACloud1, const Eigen::Vector3f& BCloud1, const Eigen::Vector3f& ACloud2, const Eigen::Vector3f& BCloud2, double maxRelativeScaleDiff)
 {
 	float ABCloud1 = (BCloud1 - ACloud1).norm();
 	float ABCloud2 = (BCloud2 - ACloud2).norm();
 	return (maxRelativeScaleDiff * ABCloud1 < ABCloud2) && (ABCloud2 * maxRelativeScaleDiff < ABCloud1);
 }
 
-void CApp::AdvancedMatching(bool crossCheck/*=true*/, bool tupleConstraint/*=true*/)
+void CApp::AdvancedMatching(bool crossCheck /*=true*/, bool tupleConstraint /*=true*/)
 {
 	correspondances_.clear();
 
 	// choose the cloud order (largest first)
-	int cloud1Index = ReferenceIndex;
-	int cloud2Index = AlignedIndex;
-	bool swapped = false;
+	int  cloud1Index = ReferenceIndex;
+	int  cloud2Index = AlignedIndex;
+	bool swapped     = false;
 
 	if (pointClouds_[cloud2Index].size() > pointClouds_[cloud1Index].size())
 	{
@@ -161,8 +159,8 @@ void CApp::AdvancedMatching(bool crossCheck/*=true*/, bool tupleConstraint/*=tru
 		Indexes cloud1_to_cloud2(cloud1Size, -1);
 		for (int indexInC2 = 0; indexInC2 < cloud2Size; ++indexInC2)
 		{
-			int nearestIndexInC1 = -1;
-			float squareDistance = 0; //not used
+			int   nearestIndexInC1 = -1;
+			float squareDistance   = 0; // not used
 			SearchKDTree(feature_tree_cloud1, cloud2Features[indexInC2], nearestIndexInC1, squareDistance);
 			assert(nearestIndexInC1 != -1);
 
@@ -173,7 +171,7 @@ void CApp::AdvancedMatching(bool crossCheck/*=true*/, bool tupleConstraint/*=tru
 				SearchKDTree(feature_tree_cloud2, cloud1Features[nearestIndexInC1], nearestIndexInC2, squareDistance);
 				assert(nearestIndexInC2 != -1);
 				cloud1_to_cloud2[nearestIndexInC1] = nearestIndexInC2;
-				
+
 				if (!crossCheck)
 				{
 					// add the corresponding 'backward' correspondance from cloud1 to cloud2 to the global correspondances list
@@ -200,13 +198,13 @@ void CApp::AdvancedMatching(bool crossCheck/*=true*/, bool tupleConstraint/*=tru
 	{
 		srand(static_cast<unsigned>(time(NULL)));
 
-		const size_t ncorr = corres.size();
+		const size_t ncorr           = corres.size();
 		const size_t number_of_trial = ncorr * 100;
 
 		const Points& cloud1 = pointClouds_[cloud1Index];
 		const Points& cloud2 = pointClouds_[cloud2Index];
 
-		size_t cnt = 0;
+		size_t          cnt = 0;
 		Correspondences corres_tuple;
 		corres_tuple.reserve(tuple_max_cnt_ * 3);
 		for (size_t i = 0; i < number_of_trial; i++)
@@ -237,11 +235,11 @@ void CApp::AdvancedMatching(bool crossCheck/*=true*/, bool tupleConstraint/*=tru
 			const Eigen::Vector3f& ptCloud2_1 = cloud2[pair1.second];
 			const Eigen::Vector3f& ptCloud2_2 = cloud2[pair2.second];
 
-			if (   Similar(ptCloud1_0, ptCloud1_1, ptCloud2_0, ptCloud2_1, tuple_scale_)
-				&& Similar(ptCloud1_0, ptCloud1_2, ptCloud2_0, ptCloud2_2, tuple_scale_)
-				&& Similar(ptCloud1_1, ptCloud1_2, ptCloud2_1, ptCloud2_2, tuple_scale_))
+			if (Similar(ptCloud1_0, ptCloud1_1, ptCloud2_0, ptCloud2_1, tuple_scale_)
+			    && Similar(ptCloud1_0, ptCloud1_2, ptCloud2_0, ptCloud2_2, tuple_scale_)
+			    && Similar(ptCloud1_1, ptCloud1_2, ptCloud2_1, ptCloud2_2, tuple_scale_))
 			{
-				//confirm the pairs
+				// confirm the pairs
 				corres_tuple.push_back(Pair(pair0.first, pair0.second));
 				corres_tuple.push_back(Pair(pair1.first, pair1.second));
 				corres_tuple.push_back(Pair(pair2.first, pair2.second));
@@ -283,10 +281,10 @@ void CApp::NormalizePoints()
 		{
 			mean += pointClouds_[i][ii];
 		}
-		mean = mean / npti;
+		mean      = mean / npti;
 		means_[i] = mean;
 
-		//printf("normalize points :: mean[%d] = [%f %f %f]\n", i, mean(0), mean(1), mean(2));
+		// printf("normalize points :: mean[%d] = [%f %f %f]\n", i, mean(0), mean(1), mean(2));
 
 		for (size_t ii = 0; ii < npti; ++ii)
 		{
@@ -310,14 +308,14 @@ void CApp::NormalizePoints()
 	if (use_absolute_scale_)
 	{
 		globalScale_ = 1.0f;
-		startScale_ = scale;
+		startScale_  = scale;
 	}
 	else
 	{
 		globalScale_ = scale; // second choice: we keep the maximum scale.
-		startScale_ = 1.0f;
+		startScale_  = 1.0f;
 	}
-	//printf("normalize points :: global scale : %f\n", globalScale_);
+	// printf("normalize points :: global scale : %f\n", globalScale_);
 
 	for (int i = 0; i < 2; ++i)
 	{
@@ -331,7 +329,7 @@ void CApp::NormalizePoints()
 
 bool CApp::OptimizePairwise(bool decrease_mu)
 {
-	//printf("Pairwise rigid pose optimization\n");
+	// printf("Pairwise rigid pose optimization\n");
 	transOutput_ = Eigen::Matrix4f::Identity();
 
 	if (correspondances_.size() < 10)
@@ -357,62 +355,62 @@ bool CApp::OptimizePairwise(bool decrease_mu)
 			}
 		}
 
-		static const int NVariable = 6;	// 3 for rotation and 3 for translation
-		Eigen::MatrixXd JTJ(NVariable, NVariable);
+		static const int NVariable = 6; // 3 for rotation and 3 for translation
+		Eigen::MatrixXd  JTJ(NVariable, NVariable);
 		JTJ.setZero();
 		Eigen::MatrixXd JTr(NVariable, 1);
 		JTr.setZero();
 
-		//double r2 = 0.0;
+		// double r2 = 0.0;
 
 		for (int c = 0; c < correspondances_.size(); c++)
 		{
-			int ii = correspondances_[c].first;
-			int jj = correspondances_[c].second;
-			const Eigen::Vector3f& p = pointClouds_[ReferenceIndex][ii];
-			const Eigen::Vector3f& q = pcj_copy[jj];
-			Eigen::Vector3f rpq = p - q;
+			int                    ii  = correspondances_[c].first;
+			int                    jj  = correspondances_[c].second;
+			const Eigen::Vector3f& p   = pointClouds_[ReferenceIndex][ii];
+			const Eigen::Vector3f& q   = pcj_copy[jj];
+			Eigen::Vector3f        rpq = p - q;
 
 			double temp = par / (rpq.dot(rpq) + par);
-			s[c] = temp * temp;
+			s[c]        = temp * temp;
 
 			Eigen::MatrixXd J(NVariable, 1);
 			J.setZero();
-			J(1) = -q(2);
-			J(2) = q(1);
-			J(3) = -1;
+			J(1)     = -q(2);
+			J(2)     = q(1);
+			J(3)     = -1;
 			double r = rpq(0);
 			JTJ += J * J.transpose() * s[c];
 			JTr += J * r * s[c];
-			//r2 += r * r * s[c];
+			// r2 += r * r * s[c];
 
 			J.setZero();
 			J(2) = -q(0);
 			J(0) = q(2);
 			J(4) = -1;
-			r = rpq(1);
+			r    = rpq(1);
 			JTJ += J * J.transpose() * s[c];
 			JTr += J * r * s[c];
-			//r2 += r * r * s[c];
+			// r2 += r * r * s[c];
 
 			J.setZero();
 			J(0) = -q(1);
 			J(1) = q(0);
 			J(5) = -1;
-			r = rpq(2);
+			r    = rpq(2);
 			JTJ += J * J.transpose() * s[c];
 			JTr += J * r * s[c];
-			//r2 += r * r * s[c];
+			// r2 += r * r * s[c];
 
-			//r2 += (par * (1.0 - sqrt(s[c])) * (1.0 - sqrt(s[c])));
+			// r2 += (par * (1.0 - sqrt(s[c])) * (1.0 - sqrt(s[c])));
 		}
 
 		Eigen::MatrixXd result = -JTJ.llt().solve(JTr);
 
 		Eigen::Affine3d aff_mat;
-		aff_mat.linear() = static_cast<Eigen::Matrix3d>(  Eigen::AngleAxisd(result(2), Eigen::Vector3d::UnitZ())
-														* Eigen::AngleAxisd(result(1), Eigen::Vector3d::UnitY())
-														* Eigen::AngleAxisd(result(0), Eigen::Vector3d::UnitX()));
+		aff_mat.linear()      = static_cast<Eigen::Matrix3d>(Eigen::AngleAxisd(result(2), Eigen::Vector3d::UnitZ())
+                                                        * Eigen::AngleAxisd(result(1), Eigen::Vector3d::UnitY())
+                                                        * Eigen::AngleAxisd(result(0), Eigen::Vector3d::UnitX()));
 		aff_mat.translation() = Eigen::Vector3d(result(3), result(4), result(5));
 
 		Eigen::Matrix4f delta = aff_mat.matrix().cast<float>();
@@ -435,8 +433,8 @@ Eigen::Matrix4f CApp::GetOutputTrans() const
 	transTemp.fill(0.0f);
 
 	transTemp.block<3, 3>(0, 0) = R;
-	transTemp.block<3, 1>(0, 3) = -R*means_[AlignedIndex] + t*globalScale_ + means_[ReferenceIndex];
-	transTemp(3, 3) = 1;
-	
+	transTemp.block<3, 1>(0, 3) = -R * means_[AlignedIndex] + t * globalScale_ + means_[ReferenceIndex];
+	transTemp(3, 3)             = 1;
+
 	return transTemp;
 }

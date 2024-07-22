@@ -1,31 +1,31 @@
-//##########################################################################
-//#                                                                        #
-//#                    CLOUDCOMPARE PLUGIN: ccCompass                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 of the License.               #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                     COPYRIGHT: Sam Thiele  2017                        #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                    CLOUDCOMPARE PLUGIN: ccCompass                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 of the License.               #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                     COPYRIGHT: Sam Thiele  2017                        #
+// #                                                                        #
+// ##########################################################################
 
 #include "ccNoteTool.h"
 
 ccNoteTool::ccNoteTool()
-	: ccTool()
+    : ccTool()
 {
 }
 
-//called when a point in a point cloud gets picked while this tool is active
+// called when a point in a point cloud gets picked while this tool is active
 void ccNoteTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccPointCloud* cloud, const CCVector3& P)
 {
-	//get note text
+	// get note text
 	QString note = QInputDialog::getText(m_app->getMainWindow(), "Note", "Contents:", QLineEdit::Normal, "Write note here.");
 
 	if (note.isEmpty())
@@ -33,12 +33,12 @@ void ccNoteTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccPointCl
 		return;
 	}
 
-	//create a 1-point lineation object (highlights note-location)
+	// create a 1-point lineation object (highlights note-location)
 	ccPointPair* l = new ccNote(cloud);
 	l->setName(note);
 	l->addPointIndex(itemIdx);
 
-	//find insert point
+	// find insert point
 	ccHObject* notesFolder = nullptr;
 	for (unsigned i = 0; i < m_app->dbRootObject()->getChildrenNumber(); i++)
 	{
@@ -48,7 +48,7 @@ void ccNoteTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccPointCl
 		}
 		else
 		{
-			//also search first-level children of root node (when files are re-loaded this is where things will sit)
+			// also search first-level children of root node (when files are re-loaded this is where things will sit)
 			for (unsigned c = 0; c < m_app->dbRootObject()->getChild(i)->getChildrenNumber(); c++)
 			{
 				if (m_app->dbRootObject()->getChild(i)->getChild(c)->getName() == "notes")
@@ -58,7 +58,7 @@ void ccNoteTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccPointCl
 				}
 			}
 		}
-		if (notesFolder) //found one :)
+		if (notesFolder) // found one :)
 		{
 			break;
 		}
@@ -70,19 +70,19 @@ void ccNoteTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccPointCl
 		m_app->addToDB(notesFolder, false, false, false, false);
 	}
 
-	//add to scene graph
+	// add to scene graph
 	notesFolder->addChild(l);
 	m_app->addToDB(l);
 }
 
-//called when the tool is set to active (for initialization)
+// called when the tool is set to active (for initialization)
 void ccNoteTool::toolActivated()
-{ 
-	//donothing
+{
+	// donothing
 }
 
-//called when the tool is set to disactive (for cleanup)
+// called when the tool is set to disactive (for cleanup)
 void ccNoteTool::toolDisactivated()
 {
-	//donothing
+	// donothing
 }

@@ -1,52 +1,53 @@
-//##########################################################################
-//#                                                                        #
-//#                    CLOUDCOMPARE PLUGIN: ccCompass                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 of the License.               #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                     COPYRIGHT: Sam Thiele  2017                        #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                    CLOUDCOMPARE PLUGIN: ccCompass                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 of the License.               #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                     COPYRIGHT: Sam Thiele  2017                        #
+// #                                                                        #
+// ##########################################################################
 
 #include "ccSNECloud.h"
-#include <ccScalarField.h>
+
 #include <ccColorRampShader.h>
-//pass ctors straight to ccPointCloud
+#include <ccScalarField.h>
+// pass ctors straight to ccPointCloud
 ccSNECloud::ccSNECloud()
-	: ccPointCloud()
-{ 
+    : ccPointCloud()
+{
 	updateMetadata();
 }
 
 ccSNECloud::ccSNECloud(ccPointCloud* obj)
-	: ccPointCloud()
-{ 
-	//copy points, normals and scalar fields from obj.
+    : ccPointCloud()
+{
+	// copy points, normals and scalar fields from obj.
 	*this += obj;
 
-	//set name
+	// set name
 	setName(obj->getName());
 
-	//update metadata
+	// update metadata
 	updateMetadata();
 }
 
 void ccSNECloud::updateMetadata()
 {
-	//add metadata tag defining the ccCompass class type
+	// add metadata tag defining the ccCompass class type
 	QVariantMap map;
 	map.insert("ccCompassType", "SNECloud");
 	setMetaData(map, true);
 }
 
-//returns true if object is a lineation
+// returns true if object is a lineation
 bool ccSNECloud::isSNECloud(ccHObject* object)
 {
 	if (object->hasMetaData("ccCompassType"))
@@ -58,38 +59,39 @@ bool ccSNECloud::isSNECloud(ccHObject* object)
 
 void ccSNECloud::drawMeOnly(CC_DRAW_CONTEXT& context)
 {
-	if (!MACRO_Foreground(context)) //2D foreground only
-		return; //do nothing
+	if (!MACRO_Foreground(context)) // 2D foreground only
+		return;                     // do nothing
 
-	//draw point cloud
+	// draw point cloud
 	ccPointCloud::drawMeOnly(context);
 
-	//draw normal vectors
+	// draw normal vectors
 	if (MACRO_Draw3D(context))
 	{
-		if (size() == 0) //no points -> bail!
+		if (size() == 0) // no points -> bail!
 			return;
 
-		//get the set of OpenGL functions (version 2.1)
-		QOpenGLFunctions_2_1 *glFunc = context.glFunctions<QOpenGLFunctions_2_1>();
-		if (glFunc == nullptr) {
+		// get the set of OpenGL functions (version 2.1)
+		QOpenGLFunctions_2_1* glFunc = context.glFunctions<QOpenGLFunctions_2_1>();
+		if (glFunc == nullptr)
+		{
 			assert(false);
 			return;
 		}
 
-		//get camera info
+		// get camera info
 		ccGLCameraParameters camera;
 		glFunc->glGetIntegerv(GL_VIEWPORT, camera.viewport);
 		glFunc->glGetDoublev(GL_PROJECTION_MATRIX, camera.projectionMat.data());
 		glFunc->glGetDoublev(GL_MODELVIEW_MATRIX, camera.modelViewMat.data());
 
 		const ccViewportParameters& viewportParams = context.display->getViewportParameters();
-		
-		//get point size for drawing
+
+		// get point size for drawing
 		float pSize = 0.0f;
 		glFunc->glGetFloatv(GL_POINT_SIZE, &pSize);
 
-		//setup
+		// setup
 		if (pSize != 0.0f)
 		{
 			glFunc->glPushAttrib(GL_LINE_BIT);
@@ -102,38 +104,40 @@ void ccSNECloud::drawMeOnly(CC_DRAW_CONTEXT& context)
 		glFunc->glPushAttrib(GL_COLOR_BUFFER_BIT);
 		glFunc->glEnable(GL_BLEND);
 
-		//get normal vector properties
+		// get normal vector properties
 		int thickID = getScalarFieldIndexByName("Thickness");
-		if (thickID == -1) //if no thickness defined, try for "spacing"
+		if (thickID == -1) // if no thickness defined, try for "spacing"
 		{
 			thickID = getScalarFieldIndexByName("Spacing");
 		}
 
-		//draw normals
+		// draw normals
 		glFunc->glBegin(GL_LINES);
 		for (unsigned p = 0; p < size(); p++)
 		{
 
-			//skip out-of-range points
+			// skip out-of-range points
 			if (m_currentDisplayedScalarField != nullptr)
 			{
-				if (!m_currentDisplayedScalarField->areNaNValuesShownInGrey()) {
-					if (!m_currentDisplayedScalarField->displayRange().isInRange(m_currentDisplayedScalarField->getValue(p))) {
+				if (!m_currentDisplayedScalarField->areNaNValuesShownInGrey())
+				{
+					if (!m_currentDisplayedScalarField->displayRange().isInRange(m_currentDisplayedScalarField->getValue(p)))
+					{
 						continue;
 					}
 				}
 			}
 
-			//skip hidden points
+			// skip hidden points
 			if (isVisibilityTableInstantiated())
 			{
 				if (m_pointsVisibility[p] != CCCoreLib::POINT_VISIBLE && !m_pointsVisibility.empty())
 				{
-					continue; //skip this point
+					continue; // skip this point
 				}
 			}
 
-			//push colour
+			// push colour
 			if (m_currentDisplayedScalarField != nullptr)
 			{
 				const ccColor::Rgb* col = m_currentDisplayedScalarField->getColor(m_currentDisplayedScalarField->getValue(p));
@@ -146,30 +150,29 @@ void ccSNECloud::drawMeOnly(CC_DRAW_CONTEXT& context)
 				ccGL::Color(glFunc, Col4);
 			}
 
-			//get length from thickness (if defined)
+			// get length from thickness (if defined)
 			float length = 1.0f;
 			if (thickID != -1)
 			{
 				length = getScalarField(thickID)->getValue(p);
 			}
 
-
-			//calculate start and end points of normal vector
+			// calculate start and end points of normal vector
 			const CCVector3 start = *getPoint(p);
-			CCVector3 end = start + (getPointNormal(p)*length);
+			CCVector3       end   = start + (getPointNormal(p) * length);
 
-			//push line to opengl
+			// push line to opengl
 			ccGL::Vertex3v(glFunc, start.u);
 			ccGL::Vertex3v(glFunc, end.u);
 		}
 		glFunc->glEnd();
-			
-		glFunc->glPopAttrib(); //GL_COLOR_BUFFER_BIT
 
-		//cleanup
+		glFunc->glPopAttrib(); // GL_COLOR_BUFFER_BIT
+
+		// cleanup
 		if (pSize != 0.0f)
 		{
-			glFunc->glPopAttrib(); //GL_LINE_BIT
+			glFunc->glPopAttrib(); // GL_LINE_BIT
 		}
 		glFunc->glPopMatrix();
 	}

@@ -1,40 +1,41 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
-//This file is directly inspired of the equivalently named file in the
-//original CANUPO project, by N. Brodu and D. Lague.
+// This file is directly inspired of the equivalently named file in the
+// original CANUPO project, by N. Brodu and D. Lague.
 
 #include "classifier.h"
 
-//Qt
+// Qt
 #include <QFile>
 
-//system
+// system
 #include <assert.h>
 #include <limits.h>
 
 Classifier::Classifier()
-	: class1(0)
-	, class2(0)
-	, absMaxXY(0)
-	, axisScaleRatio(1.0f)
-	, descriptorID(DESC_INVALID)
-	, dimPerScale(0)
-{}
+    : class1(0)
+    , class2(0)
+    , absMaxXY(0)
+    , axisScaleRatio(1.0f)
+    , descriptorID(DESC_INVALID)
+    , dimPerScale(0)
+{
+}
 
 bool Classifier::checkRefPoints()
 {
@@ -60,38 +61,40 @@ float Classifier::classify2D_checkcondnum(const Point2D& P, const Point2D& R, fl
 	// the segment PR[Pt-->Refpt] and each path's segment cross
 	// iff each one classifies the end point of the other in different classes
 	Point2D PR = R - P;
-	Point2D u = PR; u.normalize();
+	Point2D u  = PR;
+	u.normalize();
 
 	unsigned numcross = 0;
 
-	//we'll also look for the distance between P and the nearest segment
+	// we'll also look for the distance between P and the nearest segment
 	float closestSquareDist = -1.0f;
 
 	size_t segCount = path.size() - 1;
 	for (size_t i = 0; i < segCount; ++i)
 	{
-		//current path segment (or half-line!)
+		// current path segment (or half-line!)
 		Point2D AP = P - path[i];
 		Point2D AB = path[i + 1] - path[i];
-		Point2D v = AB; v.normalize();
+		Point2D v  = AB;
+		v.normalize();
 
 		condnumber = std::max<float>(condnumber, std::abs(v.dot(u)));
 
 		// Compute whether PR[Pt-->Refpt] and that segment cross
-		float denom = (u.x*v.y - v.x*u.y);
+		float denom = (u.x * v.y - v.x * u.y);
 		if (denom != 0)
 		{
 			// 1. check whether the given pt and the refpt are on different sides of the classifier line
-			//we search for alpha and beta so that
+			// we search for alpha and beta so that
 			// P + alpha * PR = A + beta * AB
-			float alpha = (AP.y * v.x - AP.x * v.y) / denom;
-			bool pathIntersects = (alpha >= 0 && alpha*alpha <= PR.norm2());
+			float alpha          = (AP.y * v.x - AP.x * v.y) / denom;
+			bool  pathIntersects = (alpha >= 0 && alpha * alpha <= PR.norm2());
 			if (pathIntersects)
 			{
 				float beta = (AP.y * u.x - AP.x * u.y) / denom;
 
 				// first and last lines are projected to infinity
-				bool refSegIntersects = ((i == 0 || beta >= 0) && (i + 1 == segCount || beta * beta < AB.norm2())); //not "beta*beta <= AB.norm2()" because the equality case will be managed by the next segment!
+				bool refSegIntersects = ((i == 0 || beta >= 0) && (i + 1 == segCount || beta * beta < AB.norm2())); // not "beta*beta <= AB.norm2()" because the equality case will be managed by the next segment!
 
 				// crossing iif each segment/line separates the other
 				if (refSegIntersects)
@@ -102,17 +105,17 @@ float Classifier::classify2D_checkcondnum(const Point2D& P, const Point2D& R, fl
 		// closest distance from the point to that segment
 		// 1. projection of the point of the line
 		float squareDistToSeg = 0;
-		float distAH = v.dot(AP);
+		float distAH          = v.dot(AP);
 		if ((i == 0 || distAH >= 0.0) && (i + 1 == segCount || distAH <= AB.norm()))
 		{
 			// 2. Is the projection within the segment limit? yes => closest
-			Point2D PH = (path[i] + v * distAH) - P;
+			Point2D PH      = (path[i] + v * distAH) - P;
 			squareDistToSeg = PH.norm2();
 		}
 		else
 		{
 			// 3. otherwise closest is the minimum of the distance to the segment ends
-			Point2D BP = P - path[i + 1];
+			Point2D BP      = P - path[i + 1];
 			squareDistToSeg = std::min(AP.norm2(), BP.norm2());
 		}
 
@@ -144,12 +147,12 @@ Classifier::Point2D Classifier::project(const CorePointDesc& mscdata) const
 	assert(weightsAxis1.size() == weightsAxis2.size());
 	assert(weightsAxis1.size() > 1);
 
-	//There may be less weights than parameters in the descriptor
-	//if we use a descriptor computed with more (bigger) scales.
-	//In this case we assume the matching scales are all at the end!
+	// There may be less weights than parameters in the descriptor
+	// if we use a descriptor computed with more (bigger) scales.
+	// In this case we assume the matching scales are all at the end!
 	//(i.e. the smallest)
 	size_t weightCount = weightsAxis1.size() - 1;
-	size_t paramCount = mscdata.params.size();
+	size_t paramCount  = mscdata.params.size();
 	assert(weightCount <= paramCount);
 	unsigned shift = static_cast<unsigned>(paramCount - weightCount);
 
@@ -170,12 +173,12 @@ float Classifier::classify(const CorePointDesc& mscdata) const
 	return classify2D(P);
 }
 
-bool Classifier::Load(QString filename,
-	std::vector<Classifier>& classifiers,
-	std::vector<float>& scales,
-	QString& error,
-	FileHeader* header/*=nullptr*/,
-	bool headerOnly/*=false*/)
+bool Classifier::Load(QString                  filename,
+                      std::vector<Classifier>& classifiers,
+                      std::vector<float>&      scales,
+                      QString&                 error,
+                      FileHeader*              header /*=nullptr*/,
+                      bool                     headerOnly /*=false*/)
 {
 	QFile file(filename);
 	if (!file.open(QIODevice::ReadOnly))
@@ -187,26 +190,26 @@ bool Classifier::Load(QString filename,
 	scales.clear();
 	classifiers.clear();
 
-	//DGM: sadly we can't use a stream as data in prm files are saved in a strange way
-	//QDataStream stream(&file);
+	// DGM: sadly we can't use a stream as data in prm files are saved in a strange way
+	// QDataStream stream(&file);
 	//--> changing the stream 'byte order' doesn't help :(
-	//stream.setByteOrder(QDataStream::LittleEndian);
+	// stream.setByteOrder(QDataStream::LittleEndian);
 
 	// scales count
 	unsigned nscales;
 	file.read(reinterpret_cast<char*>(&nscales), sizeof(unsigned));
 
-	unsigned dimPerScale = 2;
+	unsigned dimPerScale  = 2;
 	unsigned descriptorID = 1;
 
 	if (nscales == 9999)
 	{
-		//we are loading a new 'prm' file (generated by qCanupo)
-		//descriptor ID
+		// we are loading a new 'prm' file (generated by qCanupo)
+		// descriptor ID
 		file.read(reinterpret_cast<char*>(&descriptorID), sizeof(unsigned));
-		//dimension per scale
+		// dimension per scale
 		file.read(reinterpret_cast<char*>(&dimPerScale), sizeof(unsigned));
-		//and now the real number of scales
+		// and now the real number of scales
 		file.read(reinterpret_cast<char*>(&nscales), sizeof(unsigned));
 	}
 
@@ -234,13 +237,13 @@ bool Classifier::Load(QString filename,
 	if (header)
 	{
 		header->classifierCount = nclassifiers;
-		header->dimPerScale = dimPerScale;
-		header->descID = descriptorID;
+		header->dimPerScale     = dimPerScale;
+		header->descID          = descriptorID;
 	}
 
 	if (headerOnly)
 	{
-		//we can stop here
+		// we can stop here
 		return true;
 	}
 
@@ -263,10 +266,10 @@ bool Classifier::Load(QString filename,
 		{
 			Classifier& classifier = classifiers[ci];
 
-			classifier.dimPerScale = dimPerScale;
+			classifier.dimPerScale  = dimPerScale;
 			classifier.descriptorID = descriptorID;
 
-			classifier.scales = scales; //all classifiers inside a file have the same scales!
+			classifier.scales = scales; // all classifiers inside a file have the same scales!
 			file.read(reinterpret_cast<char*>(&classifier.class1), sizeof(int));
 			file.read(reinterpret_cast<char*>(&classifier.class2), sizeof(int));
 
@@ -292,18 +295,18 @@ bool Classifier::Load(QString filename,
 				}
 			}
 
-			file.read(reinterpret_cast<char*>(&classifier.refPointPos.x),	sizeof(float));
-			file.read(reinterpret_cast<char*>(&classifier.refPointPos.y),	sizeof(float));
-			file.read(reinterpret_cast<char*>(&classifier.refPointNeg.x),	sizeof(float));
-			file.read(reinterpret_cast<char*>(&classifier.refPointNeg.y),	sizeof(float));
-			file.read(reinterpret_cast<char*>(&classifier.absMaxXY),		sizeof(float));
-			file.read(reinterpret_cast<char*>(&classifier.axisScaleRatio),	sizeof(float));
+			file.read(reinterpret_cast<char*>(&classifier.refPointPos.x), sizeof(float));
+			file.read(reinterpret_cast<char*>(&classifier.refPointPos.y), sizeof(float));
+			file.read(reinterpret_cast<char*>(&classifier.refPointNeg.x), sizeof(float));
+			file.read(reinterpret_cast<char*>(&classifier.refPointNeg.y), sizeof(float));
+			file.read(reinterpret_cast<char*>(&classifier.absMaxXY), sizeof(float));
+			file.read(reinterpret_cast<char*>(&classifier.axisScaleRatio), sizeof(float));
 
 			if (!classifier.checkRefPoints())
 			{
-				//DGM: strange test, that fails for valid classifiers!
-				//error = QString("Invalid reference points in the classifier");
-				//return false;
+				// DGM: strange test, that fails for valid classifiers!
+				// error = QString("Invalid reference points in the classifier");
+				// return false;
 			}
 		}
 	}
@@ -316,8 +319,8 @@ bool Classifier::Load(QString filename,
 	return true;
 }
 
-bool Classifier::save(QString filename,
-	QString& error)
+bool Classifier::save(QString  filename,
+                      QString& error)
 {
 	QFile file(filename);
 	if (!file.open(QIODevice::WriteOnly))
@@ -326,18 +329,18 @@ bool Classifier::save(QString filename,
 		return false;
 	}
 
-	//DGM: sadly we can't use a stream as data in prm files are saved in a strange way
-	//see Classifier::Load
+	// DGM: sadly we can't use a stream as data in prm files are saved in a strange way
+	// see Classifier::Load
 
 	if (descriptorID != DESC_DIMENSIONALITY || dimPerScale != 2)
 	{
-		//we code the 'new' PRM files with 9999 in place of the number of scales!
+		// we code the 'new' PRM files with 9999 in place of the number of scales!
 		const unsigned headerCode = 9999;
 		file.write(reinterpret_cast<const char*>(&headerCode), sizeof(unsigned));
 
-		//descriptor ID
+		// descriptor ID
 		file.write(reinterpret_cast<const char*>(&descriptorID), sizeof(unsigned));
-		//dimension per scale
+		// dimension per scale
 		file.write(reinterpret_cast<const char*>(&dimPerScale), sizeof(unsigned));
 	}
 
@@ -360,12 +363,12 @@ bool Classifier::save(QString filename,
 	file.write(reinterpret_cast<const char*>(&class1), sizeof(int));
 	file.write(reinterpret_cast<const char*>(&class2), sizeof(int));
 
-	//weightsAxis1
+	// weightsAxis1
 	{
 		for (unsigned i = 0; i <= fdim; ++i)
 			file.write(reinterpret_cast<const char*>(&weightsAxis1[i]), sizeof(float));
 	}
-	//weightsAxis2
+	// weightsAxis2
 	{
 		for (unsigned i = 0; i <= fdim; ++i)
 			file.write(reinterpret_cast<const char*>(&weightsAxis2[i]), sizeof(float));
@@ -381,12 +384,12 @@ bool Classifier::save(QString filename,
 		}
 	}
 
-	file.write(reinterpret_cast<const char*>(&refPointPos.x),	sizeof(float));
-	file.write(reinterpret_cast<const char*>(&refPointPos.y),	sizeof(float));
-	file.write(reinterpret_cast<const char*>(&refPointNeg.x),	sizeof(float));
-	file.write(reinterpret_cast<const char*>(&refPointNeg.y),	sizeof(float));
-	file.write(reinterpret_cast<const char*>(&absMaxXY),		sizeof(float));
-	file.write(reinterpret_cast<const char*>(&axisScaleRatio),	sizeof(float));
+	file.write(reinterpret_cast<const char*>(&refPointPos.x), sizeof(float));
+	file.write(reinterpret_cast<const char*>(&refPointPos.y), sizeof(float));
+	file.write(reinterpret_cast<const char*>(&refPointNeg.x), sizeof(float));
+	file.write(reinterpret_cast<const char*>(&refPointNeg.y), sizeof(float));
+	file.write(reinterpret_cast<const char*>(&absMaxXY), sizeof(float));
+	file.write(reinterpret_cast<const char*>(&axisScaleRatio), sizeof(float));
 
 	file.close();
 

@@ -1,77 +1,80 @@
 #pragma once
 
-//#######################################################################################
-//#                                                                                     #
-//#                              CLOUDCOMPARE PLUGIN: qCSF                              #
-//#                                                                                     #
-//#        This program is free software; you can redistribute it and/or modify         #
-//#        it under the terms of the GNU General Public License as published by         #
-//#        the Free Software Foundation; version 2 or later of the License.             #
-//#                                                                                     #
-//#        This program is distributed in the hope that it will be useful,              #
-//#        but WITHOUT ANY WARRANTY; without even the implied warranty of               #
-//#        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                 #
-//#        GNU General Public License for more details.                                 #
-//#                                                                                     #
-//#        Please cite the following paper, If you use this plugin in your work.        #
-//#                                                                                     #
-//#  Zhang W, Qi J, Wan P, Wang H, Xie D, Wang X, Yan G. An Easy-to-Use Airborne LiDAR  #
-//#  Data Filtering Method Based on Cloth Simulation. Remote Sensing. 2016; 8(6):501.   #
-//#                                                                                     #
-//#                                     Copyright ©                                     #
-//#               RAMM laboratory, School of Geography, Beijing Normal University       #
-//#                               (http://ramm.bnu.edu.cn/)                             #
-//#                                                                                     #
-//#                      Wuming Zhang; Jianbo Qi; Peng Wan; Hongtao Wang                #
-//#                                                                                     #
-//#                      contact us: 2009zwm@gmail.com; wpqjbzwm@126.com                #
-//#                                                                                     #
-//#######################################################################################
+// #######################################################################################
+// #                                                                                     #
+// #                              CLOUDCOMPARE PLUGIN: qCSF                              #
+// #                                                                                     #
+// #        This program is free software; you can redistribute it and/or modify         #
+// #        it under the terms of the GNU General Public License as published by         #
+// #        the Free Software Foundation; version 2 or later of the License.             #
+// #                                                                                     #
+// #        This program is distributed in the hope that it will be useful,              #
+// #        but WITHOUT ANY WARRANTY; without even the implied warranty of               #
+// #        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                 #
+// #        GNU General Public License for more details.                                 #
+// #                                                                                     #
+// #        Please cite the following paper, If you use this plugin in your work.        #
+// #                                                                                     #
+// #  Zhang W, Qi J, Wan P, Wang H, Xie D, Wang X, Yan G. An Easy-to-Use Airborne LiDAR  #
+// #  Data Filtering Method Based on Cloth Simulation. Remote Sensing. 2016; 8(6):501.   #
+// #                                                                                     #
+// #                                     Copyright ©                                     #
+// #               RAMM laboratory, School of Geography, Beijing Normal University       #
+// #                               (http://ramm.bnu.edu.cn/)                             #
+// #                                                                                     #
+// #                      Wuming Zhang; Jianbo Qi; Peng Wan; Hongtao Wang                #
+// #                                                                                     #
+// #                      contact us: 2009zwm@gmail.com; wpqjbzwm@126.com                #
+// #                                                                                     #
+// #######################################################################################
 
 // A mex version for programming in Matlab is at File Exchange of Mathworks website:
 // http://www.mathworks.com/matlabcentral/fileexchange/58139-csf--ground-filtering-of-point-cloud-based-on-cloth-simulation
 
-//CloudCompare
+// CloudCompare
 #include "ccCommandLineInterface.h"
 
-//Local
-#include "ccCSFDlg.h"
+// Local
 #include "CSF.h"
+#include "ccCSFDlg.h"
 
-static const char COMMAND_CSF[] = "CSF"; 
-static const char COMMAND_CSF_SCENE[] = "SCENES";
-static const char COMMAND_CSF_SCENE_SLOPE[] = "SLOPE";
-static const char COMMAND_CSF_SCENE_RELIEF[] = "RELIEF";
-static const char COMMAND_CSF_SCENE_FLAT[] = "FLAT";
-static const char COMMAND_CSF_PROC_SLOPE[] = "PROC_SLOPE"; 
+static const char COMMAND_CSF[]                  = "CSF";
+static const char COMMAND_CSF_SCENE[]            = "SCENES";
+static const char COMMAND_CSF_SCENE_SLOPE[]      = "SLOPE";
+static const char COMMAND_CSF_SCENE_RELIEF[]     = "RELIEF";
+static const char COMMAND_CSF_SCENE_FLAT[]       = "FLAT";
+static const char COMMAND_CSF_PROC_SLOPE[]       = "PROC_SLOPE";
 static const char COMMAND_CSF_CLOTH_RESOLUTION[] = "CLOTH_RESOLUTION";
-static const char COMMAND_CSF_MAX_ITERATION[] = "MAX_ITERATION";
-static const char COMMAND_CSF_CLASS_THRESHOLD[] = "CLASS_THRESHOLD";
-static const char COMMAND_CSF_EXPORT_GROUND[] = "EXPORT_GROUND";
+static const char COMMAND_CSF_MAX_ITERATION[]    = "MAX_ITERATION";
+static const char COMMAND_CSF_CLASS_THRESHOLD[]  = "CLASS_THRESHOLD";
+static const char COMMAND_CSF_EXPORT_GROUND[]    = "EXPORT_GROUND";
 static const char COMMAND_CSF_EXPORT_OFFGROUND[] = "EXPORT_OFFGROUND";
 
 struct CommandCSF : public ccCommandLineInterface::Command
 {
-	CommandCSF() : ccCommandLineInterface::Command("CSF", COMMAND_CSF) {}
+	CommandCSF()
+	    : ccCommandLineInterface::Command("CSF", COMMAND_CSF)
+	{
+	}
 
 	virtual bool process(ccCommandLineInterface& cmd) override
 	{
 		cmd.print("[CSF]");
 
-		if (cmd.clouds().empty()) 
+		if (cmd.clouds().empty())
 		{
 			cmd.error("No cloud loaded");
 			return false;
 		}
 
-		//initial parameters
-		bool csfPostprocessing = false;
-		double clothResolution = 2.0;
-		double classThreshold = 0.5;
-		int csfRigidness = 2;
-		int maxIteration = 500;
-		bool exportGround = false;
-		bool exportOffground = false;
+		// initial parameters
+		bool   csfPostprocessing = false;
+		double clothResolution   = 2.0;
+		double classThreshold    = 0.5;
+		int    csfRigidness      = 2;
+		int    maxIteration      = 500;
+		bool   exportGround      = false;
+		bool   exportOffground   = false;
 
 		while (!cmd.arguments().empty())
 		{
@@ -79,7 +82,7 @@ struct CommandCSF : public ccCommandLineInterface::Command
 			if (ccCommandLineInterface::IsCommand(ARGUMENT, COMMAND_CSF_SCENE))
 			{
 				cmd.arguments().pop_front();
-				bool conv = false;
+				bool    conv  = false;
 				QString scene = cmd.arguments().takeFirst();
 				if (scene == COMMAND_CSF_SCENE_SLOPE)
 				{
@@ -102,7 +105,7 @@ struct CommandCSF : public ccCommandLineInterface::Command
 					csfRigidness = 2;
 				}
 			}
-			else if (ccCommandLineInterface::IsCommand(ARGUMENT, COMMAND_CSF_PROC_SLOPE)) 
+			else if (ccCommandLineInterface::IsCommand(ARGUMENT, COMMAND_CSF_PROC_SLOPE))
 			{
 				cmd.arguments().pop_front();
 				cmd.print("Slope processing turned on");
@@ -111,7 +114,7 @@ struct CommandCSF : public ccCommandLineInterface::Command
 			else if (ccCommandLineInterface::IsCommand(ARGUMENT, COMMAND_CSF_CLOTH_RESOLUTION))
 			{
 				cmd.arguments().pop_front();
-				bool conv = false;
+				bool conv       = false;
 				clothResolution = cmd.arguments().takeFirst().toDouble(&conv);
 				if (!conv)
 				{
@@ -122,7 +125,7 @@ struct CommandCSF : public ccCommandLineInterface::Command
 			else if (ccCommandLineInterface::IsCommand(ARGUMENT, COMMAND_CSF_MAX_ITERATION))
 			{
 				cmd.arguments().pop_front();
-				bool conv = false;
+				bool conv    = false;
 				maxIteration = cmd.arguments().takeFirst().toInt(&conv);
 				if (!conv)
 				{
@@ -133,7 +136,7 @@ struct CommandCSF : public ccCommandLineInterface::Command
 			else if (ccCommandLineInterface::IsCommand(ARGUMENT, COMMAND_CSF_CLASS_THRESHOLD))
 			{
 				cmd.arguments().pop_front();
-				bool conv = false;
+				bool conv      = false;
 				classThreshold = cmd.arguments().takeFirst().toDouble(&conv);
 				if (!conv)
 				{
@@ -160,14 +163,14 @@ struct CommandCSF : public ccCommandLineInterface::Command
 			}
 		}
 
-		//setup parameters
+		// setup parameters
 		CSF::Parameters csfParams;
 		{
-			csfParams.smoothSlope = csfPostprocessing;
-			csfParams.class_threshold = classThreshold;
+			csfParams.smoothSlope      = csfPostprocessing;
+			csfParams.class_threshold  = classThreshold;
 			csfParams.cloth_resolution = clothResolution;
-			csfParams.rigidness = csfRigidness;
-			csfParams.iterations = maxIteration;
+			csfParams.rigidness        = csfRigidness;
+			csfParams.iterations       = maxIteration;
 		}
 
 		std::vector<CLCloudDesc> newClouds;
@@ -176,7 +179,7 @@ struct CommandCSF : public ccCommandLineInterface::Command
 		{
 			ccPointCloud* pc = desc.pc;
 
-			//Convert CC point cloud to CSF type
+			// Convert CC point cloud to CSF type
 			unsigned count = pc->size();
 			if (count == 0)
 			{
@@ -184,26 +187,26 @@ struct CommandCSF : public ccCommandLineInterface::Command
 				continue;
 			}
 
-			ccPointCloud* groundCloud = nullptr;
+			ccPointCloud* groundCloud    = nullptr;
 			ccPointCloud* offGroundCloud = nullptr;
-			ccMesh* clothMesh = nullptr;
+			ccMesh*       clothMesh      = nullptr;
 
 			if (!CSF::Apply(pc,
-							csfParams,
-							groundCloud,
-							offGroundCloud,
-							false,
-							clothMesh,
-							nullptr))
+			                csfParams,
+			                groundCloud,
+			                offGroundCloud,
+			                false,
+			                clothMesh,
+			                nullptr))
 			{
 				return cmd.error("Not enough memory");
 			}
 
-			//store ground subset
+			// store ground subset
 			if (groundCloud)
 			{
 				groundCloud->setName(desc.basename + QString("_ground_points"));
-				//add cloud to the pool of new clouds
+				// add cloud to the pool of new clouds
 				CLCloudDesc groundDesc(groundCloud, desc.basename + QString("_ground_points"), desc.path, -1);
 				newClouds.push_back(groundDesc);
 
@@ -217,7 +220,7 @@ struct CommandCSF : public ccCommandLineInterface::Command
 				}
 			}
 
-			//store off-ground subset
+			// store off-ground subset
 			if (offGroundCloud)
 			{
 				offGroundCloud->setName(desc.basename + QString("_offground_points"));

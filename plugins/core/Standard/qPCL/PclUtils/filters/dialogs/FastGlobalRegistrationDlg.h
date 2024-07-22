@@ -1,39 +1,38 @@
 #pragma once
 
-//##########################################################################
-//#                                                                        #
-//#                              CLOUDCOMPARE                              #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                              CLOUDCOMPARE                              #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
+// #                                                                        #
+// ##########################################################################
 
-//Qt
+// Qt
 #include <QDialog>
-
 #include <ui_FastGlobalRegistrationDlg.h>
 
 class ccPointCloud;
 
 //! Fast Global Registration dialog
-class FastGlobalRegistrationDialog : public QDialog, public Ui::FastGlobalRegistrationDialog
+class FastGlobalRegistrationDialog : public QDialog
+    , public Ui::FastGlobalRegistrationDialog
 {
 	Q_OBJECT
 
-public:
-
+  public:
 	//! Default constructor
-	FastGlobalRegistrationDialog(	const std::vector<ccPointCloud*>& allClouds,
-									QWidget* parent = nullptr);
+	FastGlobalRegistrationDialog(const std::vector<ccPointCloud*>& allClouds,
+	                             QWidget*                          parent = nullptr);
 
 	//! Default destructor
 	~FastGlobalRegistrationDialog() override;
@@ -47,12 +46,11 @@ public:
 	//! Saves parameters for next call
 	void saveParameters() const;
 
-protected:
+  protected:
 	void autoEstimateRadius();
 	void referenceEntityChanged(int index);
 
-protected:
-
+  protected:
 	void updateGUI();
 
 	//! All clouds (input)
@@ -61,4 +59,3 @@ protected:
 	//! Reference cloud unique ID
 	unsigned referencesCloudUinqueID;
 };
-

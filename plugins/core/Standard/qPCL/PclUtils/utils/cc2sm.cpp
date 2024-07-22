@@ -1,40 +1,40 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qPCL                        #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                         COPYRIGHT: Luca Penasa                         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qPCL                        #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                         COPYRIGHT: Luca Penasa                         #
+// #                                                                        #
+// ##########################################################################
 //
 #include "cc2sm.h"
 
-//Local
-#include "my_point_types.h"
+// Local
 #include "PCLConv.h"
+#include "my_point_types.h"
 
-//PCL
+// PCL
 #include <pcl/common/io.h>
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 #include <ccScalarField.h>
 
-//system
+// system
 #include <assert.h>
 
 using namespace pcl;
 
 cc2smReader::cc2smReader(ccPointCloud* cccloud)
-	: m_ccCloud(cccloud)
+    : m_ccCloud(cccloud)
 {
 	assert(m_ccCloud);
 }
@@ -64,14 +64,14 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cc2smReader::getRawXYZ() const
 		for (unsigned i = 0; i < pointCount; ++i)
 		{
 			const CCVector3* P = m_ccCloud->getPoint(i);
-			xyzCloud->at(i).x = static_cast<float>(P->x);
-			xyzCloud->at(i).y = static_cast<float>(P->y);
-			xyzCloud->at(i).z = static_cast<float>(P->z);
+			xyzCloud->at(i).x  = static_cast<float>(P->x);
+			xyzCloud->at(i).y  = static_cast<float>(P->y);
+			xyzCloud->at(i).z  = static_cast<float>(P->z);
 		}
 	}
 	catch (...)
 	{
-		//any error (memory, etc.)
+		// any error (memory, etc.)
 		return {};
 	}
 
@@ -100,10 +100,10 @@ PCLCloud::Ptr cc2smReader::getXYZ() const
 	}
 	catch (...)
 	{
-		//any error (memory, etc.)
+		// any error (memory, etc.)
 		return {};
 	}
-	
+
 	return outputCloud;
 }
 
@@ -125,7 +125,7 @@ PCLCloud::Ptr cc2smReader::getNormals() const
 
 		for (unsigned i = 0; i < pointCount; ++i)
 		{
-			const CCVector3& N = m_ccCloud->getPointNormal(i);
+			const CCVector3& N       = m_ccCloud->getPointNormal(i);
 			normalsCloud[i].normal_x = N.x;
 			normalsCloud[i].normal_y = N.y;
 			normalsCloud[i].normal_z = N.z;
@@ -136,10 +136,10 @@ PCLCloud::Ptr cc2smReader::getNormals() const
 	}
 	catch (...)
 	{
-		//any error (memory, etc.)
+		// any error (memory, etc.)
 		return {};
 	}
-	
+
 	return outputCloud;
 }
 
@@ -156,15 +156,15 @@ PCLCloud::Ptr cc2smReader::getColors() const
 	try
 	{
 		PointCloud<OnlyRGB> rgbCloud;
-		unsigned pointCount = m_ccCloud->size();
+		unsigned            pointCount = m_ccCloud->size();
 		rgbCloud.resize(pointCount);
 
 		for (unsigned i = 0; i < pointCount; ++i)
 		{
 			const ccColor::Rgb& rgb = m_ccCloud->getPointColor(i);
-			rgbCloud[i].r = static_cast<uint8_t>(rgb.r);
-			rgbCloud[i].g = static_cast<uint8_t>(rgb.g);
-			rgbCloud[i].b = static_cast<uint8_t>(rgb.b);
+			rgbCloud[i].r           = static_cast<uint8_t>(rgb.r);
+			rgbCloud[i].g           = static_cast<uint8_t>(rgb.g);
+			rgbCloud[i].b           = static_cast<uint8_t>(rgb.b);
 		}
 
 		outputCloud.reset(new PCLCloud);
@@ -172,7 +172,7 @@ PCLCloud::Ptr cc2smReader::getColors() const
 	}
 	catch (...)
 	{
-		//any error (memory, etc.)
+		// any error (memory, etc.)
 		return {};
 	}
 
@@ -207,22 +207,22 @@ PCLCloud::Ptr cc2smReader::getFloatScalarField(const QString& fieldName) const
 
 		for (unsigned i = 0; i < pointCount; ++i)
 		{
-			ScalarType scalar = sf->getValue(i);
+			ScalarType scalar  = sf->getValue(i);
 			sfCloud[i].S5c4laR = static_cast<float>(scalar);
 		}
 
 		outputCloud.reset(new PCLCloud);
 		TO_PCL_CLOUD(sfCloud, *outputCloud);
 
-		//Now change the name of the scalar field -> we cannot have any space into the field name
-		//NOTE this is a little trick to put any number of scalar fields in a message PointCloud2 object
-		//We use a point type with a generic scalar field named scalar. we load the scalar field and
-		//then we change the name to the needed one
+		// Now change the name of the scalar field -> we cannot have any space into the field name
+		// NOTE this is a little trick to put any number of scalar fields in a message PointCloud2 object
+		// We use a point type with a generic scalar field named scalar. we load the scalar field and
+		// then we change the name to the needed one
 		outputCloud->fields[0].name = GetSimplifiedSFName(fieldName);
 	}
 	catch (...)
 	{
-		//any error (memory, etc.)
+		// any error (memory, etc.)
 		return {};
 	}
 
@@ -237,7 +237,7 @@ PCLCloud::Ptr cc2smReader::getAsSM() const
 		return {};
 	}
 
-	//list of scalar fields
+	// list of scalar fields
 	QStringList scalarFields;
 	for (unsigned i = 0; i < m_ccCloud->getNumberOfScalarFields(); ++i)
 	{
@@ -259,7 +259,7 @@ static PCLCloud::Ptr SetOrAdd(PCLCloud::Ptr firstCloud, PCLCloud::Ptr secondClou
 	{
 		try
 		{
-			PCLCloud::Ptr tempCloud(new PCLCloud); //temporary cloud
+			PCLCloud::Ptr tempCloud(new PCLCloud); // temporary cloud
 			pcl::concatenateFields(*firstCloud, *secondCloud, *tempCloud);
 			return tempCloud;
 		}
@@ -332,7 +332,7 @@ PCLCloud::Ptr cc2smReader::getAsSM(bool xyz, bool normals, bool rgbColors, const
 	}
 	catch (...)
 	{
-		//any error (memory, etc.)
+		// any error (memory, etc.)
 		outputCloud.reset();
 	}
 
@@ -357,7 +357,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr cc2smReader::getAsPointNormal() const
 	}
 	catch (...)
 	{
-		//any error (memory, etc.)
+		// any error (memory, etc.)
 		return {};
 	}
 
@@ -373,12 +373,12 @@ pcl::PointCloud<pcl::PointNormal>::Ptr cc2smReader::getAsPointNormal() const
 	{
 		for (unsigned i = 0; i < pointCount; ++i)
 		{
-			const CCVector3* N = m_ccCloud->getNormal(i);
+			const CCVector3* N        = m_ccCloud->getNormal(i);
 			pcl_cloud->at(i).normal_x = static_cast<float>(N->x);
 			pcl_cloud->at(i).normal_y = static_cast<float>(N->y);
 			pcl_cloud->at(i).normal_z = static_cast<float>(N->z);
 		}
 	}
-	
+
 	return pcl_cloud;
 }

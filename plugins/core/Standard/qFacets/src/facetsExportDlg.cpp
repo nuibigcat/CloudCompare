@@ -1,32 +1,32 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qFacets                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                      COPYRIGHT: Thomas Dewez, BRGM                     #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qFacets                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                      COPYRIGHT: Thomas Dewez, BRGM                     #
+// #                                                                        #
+// ##########################################################################
 
 #include "facetsExportDlg.h"
 
-//Qt
+// Qt
 #include <QFileDialog>
 
-//System
+// System
 #include <assert.h>
 
 FacetsExportDlg::FacetsExportDlg(IOMode mode, QWidget* parent)
-	: QDialog(parent, Qt::Tool)
-	, Ui::FacetsExportDlg()
-	, m_mode(mode)
+    : QDialog(parent, Qt::Tool)
+    , Ui::FacetsExportDlg()
+    , m_mode(mode)
 {
 	setupUi(this);
 
@@ -36,7 +36,7 @@ FacetsExportDlg::FacetsExportDlg(IOMode mode, QWidget* parent)
 void FacetsExportDlg::browseDestination()
 {
 	QString saveFileFilter;
-	switch(m_mode)
+	switch (m_mode)
 	{
 	case SHAPE_FILE_IO:
 		saveFileFilter = "Shapefile (*.shp)";
@@ -49,7 +49,7 @@ void FacetsExportDlg::browseDestination()
 		return;
 	}
 
-	//open file saving dialog
+	// open file saving dialog
 	QString outputFilename = QFileDialog::getSaveFileName(nullptr, "Select destination", destinationPathLineEdit->text(), saveFileFilter);
 
 	if (outputFilename.isEmpty())

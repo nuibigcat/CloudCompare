@@ -1,19 +1,19 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef Q_CANUPO_TRAINING_DIALOG_HEADER
 #define Q_CANUPO_TRAINING_DIALOG_HEADER
@@ -24,12 +24,12 @@ class ccMainAppInterface;
 class ccPointCloud;
 
 //! CANUPO plugin's training dialog
-class qCanupoTrainingDialog : public QDialog, public Ui::CanupoTrainingDialog
+class qCanupoTrainingDialog : public QDialog
+    , public Ui::CanupoTrainingDialog
 {
 	Q_OBJECT
 
-public:
-
+  public:
 	//! Default constructor
 	qCanupoTrainingDialog(ccMainAppInterface* app);
 
@@ -55,19 +55,16 @@ public:
 	//! Returns the selected descriptor ID
 	unsigned getDescriptorID() const;
 
-protected:
-
+  protected:
 	void onClassChanged(int);
 	void onCloudChanged(int);
 
-protected:
-
+  protected:
 	//! Gives access to the application (data-base, UI, etc.)
 	ccMainAppInterface* m_app;
 
-	//Returns whether the current parameters are valid or not
+	// Returns whether the current parameters are valid or not
 	bool validParameters() const;
-
 };
 
-#endif //Q_CANUPO_TRAINING_DIALOG_HEADER
+#endif // Q_CANUPO_TRAINING_DIALOG_HEADER

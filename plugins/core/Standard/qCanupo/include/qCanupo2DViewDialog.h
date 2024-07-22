@@ -1,29 +1,29 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef Q_CANUPO_2DVIEW_DIALOG_HEADER
 #define Q_CANUPO_2DVIEW_DIALOG_HEADER
 
 #include <ui_qCanupo2DViewDialog.h>
 
-//Local
+// Local
 #include "classifier.h"
 
-//CCCoreLib
+// CCCoreLib
 #include <CCGeom.h>
 
 class ccMainAppInterface;
@@ -33,21 +33,21 @@ class ccPointCloud;
 class ccPolyline;
 
 //! CANUPO plugin's 2D view dialog
-class qCanupo2DViewDialog : public QDialog, public Ui::Canupo2DViewDialog
+class qCanupo2DViewDialog : public QDialog
+    , public Ui::Canupo2DViewDialog
 {
 	Q_OBJECT
 
-public:
-
+  public:
 	//! Default constructor
 	qCanupo2DViewDialog(const CorePointDescSet* descriptors1,
-						const CorePointDescSet* descriptors2,
-						QString cloud1Name,
-						QString cloud2Name,
-						int class1 = 1,
-						int class2 = 2,
-						const CorePointDescSet* evaluationDescriptors = nullptr,
-						ccMainAppInterface* app = nullptr);
+	                    const CorePointDescSet* descriptors2,
+	                    QString                 cloud1Name,
+	                    QString                 cloud2Name,
+	                    int                     class1                = 1,
+	                    int                     class2                = 2,
+	                    const CorePointDescSet* evaluationDescriptors = nullptr,
+	                    ccMainAppInterface*     app                   = nullptr);
 
 	//! Destructor
 	virtual ~qCanupo2DViewDialog();
@@ -56,16 +56,17 @@ public:
 	void setPickingRadius(int radius);
 
 	//! Returns classifier
-	const Classifier& getClassifier() { return m_classifier; }
+	const Classifier& getClassifier()
+	{
+		return m_classifier;
+	}
 
-public:
-
+  public:
 	//! Trains the classifier (with the current number of scales!)
 	bool trainClassifier();
 
-protected:
-
-	//! Updates the boundary representation 
+  protected:
+	//! Updates the boundary representation
 	void resetBoundary();
 
 	//! Computes statistics with the current classifier
@@ -75,14 +76,13 @@ protected:
 	void checkBeforeAccept();
 	void setPointSize(int);
 	void onScalesCountSpinBoxChanged(int);
-	
-	void addOrSelectPoint(int,int);
-	void removePoint(int,int);
-	void moveSelectedPoint(int,int,Qt::MouseButtons);
+
+	void addOrSelectPoint(int, int);
+	void removePoint(int, int);
+	void moveSelectedPoint(int, int, Qt::MouseButtons);
 	void deselectPoint();
 
-protected:
-
+  protected:
 	//! Resets display
 	void reset();
 
@@ -117,15 +117,15 @@ protected:
 	//! Whether the classifier has been saved (at least once)
 	bool m_classifierSaved;
 
-	//descritpors
+	// descritpors
 	const CorePointDescSet* m_descriptors1;
 	const CorePointDescSet* m_descriptors2;
 	const CorePointDescSet* m_evaluationDescriptors;
 
-	//classes
-	int m_class1;
+	// classes
+	int     m_class1;
 	QString m_cloud1Name;
-	int m_class2;
+	int     m_class2;
 	QString m_cloud2Name;
 
 	//! Associated cloud
@@ -141,4 +141,4 @@ protected:
 	int m_pickingRadius;
 };
 
-#endif //Q_CANUPO_2DVIEW_DIALOG_HEADER
+#endif // Q_CANUPO_2DVIEW_DIALOG_HEADER

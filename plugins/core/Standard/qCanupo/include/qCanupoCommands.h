@@ -1,35 +1,38 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef CANUPO_PLUGIN_COMMANDS_HEADER
 #define CANUPO_PLUGIN_COMMANDS_HEADER
 
-//CloudCompare
+// CloudCompare
 #include "ccCommandLineInterface.h"
 
-//Local
+// Local
 #include "qCanupoProcess.h"
 
-static const char COMMAND_CANUPO_CALSSIFY[] = "CANUPO_CLASSIFY";
+static const char COMMAND_CANUPO_CALSSIFY[]   = "CANUPO_CLASSIFY";
 static const char COMMAND_CANUPO_CONFIDENCE[] = "USE_CONFIDENCE";
 
 struct CommandCanupoClassif : public ccCommandLineInterface::Command
 {
-	CommandCanupoClassif() : ccCommandLineInterface::Command("Canupo Classify", COMMAND_CANUPO_CALSSIFY) {}
+	CommandCanupoClassif()
+	    : ccCommandLineInterface::Command("Canupo Classify", COMMAND_CANUPO_CALSSIFY)
+	{
+	}
 
 	virtual bool process(ccCommandLineInterface& cmd) override
 	{
@@ -40,21 +43,21 @@ struct CommandCanupoClassif : public ccCommandLineInterface::Command
 		}
 
 		qCanupoProcess::ClassifyParams params;
-		params.confidenceThreshold = 0.0;
-		params.generateAdditionalSF = false;
-		params.generateRoughnessSF = false;
-		params.samplingDist = 0.0;
+		params.confidenceThreshold      = 0.0;
+		params.generateAdditionalSF     = false;
+		params.generateRoughnessSF      = false;
+		params.samplingDist             = 0.0;
 		params.useActiveSFForConfidence = false;
-		
+
 		QString classifierFilename;
 
-		//optional parameter
+		// optional parameter
 		while (!cmd.arguments().empty())
 		{
 			QString argument = cmd.arguments().front();
 			if (ccCommandLineInterface::IsCommand(argument, COMMAND_CANUPO_CONFIDENCE))
 			{
-				//local option confirmed, we can move on
+				// local option confirmed, we can move on
 				cmd.arguments().pop_front();
 
 				if (cmd.arguments().empty())
@@ -73,7 +76,7 @@ struct CommandCanupoClassif : public ccCommandLineInterface::Command
 			}
 			else
 			{
-				//we assume the parameter is the classifier filename
+				// we assume the parameter is the classifier filename
 				classifierFilename = argument;
 				cmd.arguments().pop_front();
 				break;
@@ -92,11 +95,11 @@ struct CommandCanupoClassif : public ccCommandLineInterface::Command
 
 		for (CLCloudDesc& desc : cmd.clouds())
 		{
-			CorePointDescSet corePointsDescriptors; //core point descriptors
-			ccPointCloud* realCorePoints = desc.pc;
-			CCCoreLib::GenericIndexedCloudPersist* corePoints = realCorePoints;
+			CorePointDescSet                       corePointsDescriptors; // core point descriptors
+			ccPointCloud*                          realCorePoints = desc.pc;
+			CCCoreLib::GenericIndexedCloudPersist* corePoints     = realCorePoints;
 
-			//has the current cloud an active SF?
+			// has the current cloud an active SF?
 			int currentSFIndex = desc.pc->getCurrentDisplayedScalarFieldIndex();
 			if (currentSFIndex >= 0)
 			{
@@ -121,7 +124,7 @@ struct CommandCanupoClassif : public ccCommandLineInterface::Command
 			}
 			else
 			{
-				//process failed
+				// process failed
 				break;
 			}
 		}
@@ -130,4 +133,4 @@ struct CommandCanupoClassif : public ccCommandLineInterface::Command
 	}
 };
 
-#endif //CANUPO_PLUGIN_COMMANDS_HEADER
+#endif // CANUPO_PLUGIN_COMMANDS_HEADER

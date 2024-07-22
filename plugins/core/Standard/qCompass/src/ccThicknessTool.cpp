@@ -1,53 +1,54 @@
-//##########################################################################
-//#                                                                        #
-//#                    CLOUDCOMPARE PLUGIN: ccCompass                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 of the License.               #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                     COPYRIGHT: Sam Thiele  2017                        #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                    CLOUDCOMPARE PLUGIN: ccCompass                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 of the License.               #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                     COPYRIGHT: Sam Thiele  2017                        #
+// #                                                                        #
+// ##########################################################################
+
+#include "ccThicknessTool.h"
 
 #include "ccCompass.h"
 #include "ccGeoObject.h"
-#include "ccThicknessTool.h"
 
-static ccColor::Rgba ACTIVE_COLOR = ccColor::red;
-bool ccThicknessTool::TWO_POINT_MODE = false;
+static ccColor::Rgba ACTIVE_COLOR                    = ccColor::red;
+bool                 ccThicknessTool::TWO_POINT_MODE = false;
 
 ccThicknessTool::ccThicknessTool()
-	: ccTool()
+    : ccTool()
 {
 }
 
-//called when the selection is changed while this tool is active
+// called when the selection is changed while this tool is active
 void ccThicknessTool::onNewSelection(const ccHObject::Container& selectedEntities)
 {
 	for (ccHObject* h : selectedEntities)
 	{
 		ccPlane* p = dynamic_cast<ccPlane*>(h);
-		if (p && p->isDisplayed()) //this is a plane? [and it's shown - avoids confusion]
+		if (p && p->isDisplayed()) // this is a plane? [and it's shown - avoids confusion]
 		{
 			if (m_referencePlane)
 			{
-				m_referencePlane->enableTempColor(false); //go back to normal colour
+				m_referencePlane->enableTempColor(false); // go back to normal colour
 			}
 
-			//store plane
-			m_referencePlane = p; //set the reference plane used to calculate the thickness
+			// store plane
+			m_referencePlane = p; // set the reference plane used to calculate the thickness
 
-			//change colour
+			// change colour
 			m_referencePlane->setTempColor(ACTIVE_COLOR);
 			m_referencePlane->enableTempColor(true);
 
-			//make all point clouds visible again
+			// make all point clouds visible again
 			for (int i : m_hiddenObjects)
 			{
 				ccHObject* cld = m_app->dbRootObject()->find(i);
@@ -55,33 +56,33 @@ void ccThicknessTool::onNewSelection(const ccHObject::Container& selectedEntitie
 			}
 			m_hiddenObjects.clear();
 
-			//now hide all visible planes
+			// now hide all visible planes
 			recurseChildren(m_app->dbRootObject(), false, true);
 
-			//make the reference plane visible
+			// make the reference plane visible
 			m_referencePlane->setVisible(true);
 
-			//display instructions
+			// display instructions
 			m_app->getActiveGLWindow()->displayNewMessage("Select measurement point.", ccGLWindowInterface::LOWER_LEFT_MESSAGE);
 
-			//redraw
+			// redraw
 			m_app->getActiveGLWindow()->refresh();
 
-			//done
+			// done
 			return;
 		}
 	}
 }
 
-//called when a point in a point cloud gets picked while this tool is active
+// called when a point in a point cloud gets picked while this tool is active
 bool ccThicknessTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccHObject* pickedObject, const CCVector3& P)
 {
-	if (pickedObject->isA(CC_TYPES::PLANE)) //we want to be able to pick planes
+	if (pickedObject->isA(CC_TYPES::PLANE)) // we want to be able to pick planes
 	{
-		//select the object
+		// select the object
 		m_app->setSelectedInDB(pickedObject, true);
 
-		//call to update selection
+		// call to update selection
 		onNewSelection(m_app->getSelectedEntities());
 
 		return true;
@@ -90,38 +91,38 @@ bool ccThicknessTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccHO
 	return false;
 }
 
-//called when a point in a point cloud gets picked while this tool is active
+// called when a point in a point cloud gets picked while this tool is active
 void ccThicknessTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccPointCloud* cloud, const CCVector3& P)
 {
-	//no plane, no deal
+	// no plane, no deal
 	if (!m_referencePlane)
 	{
 		ccLog::Error("[Compass] Please select a fit-plane to constrain true-thickness calculations");
 		return;
 	}
 
-	//get modified insert point (thicknesses are always added to GeoObject interiors if possible)
+	// get modified insert point (thicknesses are always added to GeoObject interiors if possible)
 	insertPoint = getInsertInterior(insertPoint);
 
-	if (!ccThicknessTool::TWO_POINT_MODE) //one point mode - calculate plane to point distance and finish
+	if (!ccThicknessTool::TWO_POINT_MODE) // one point mode - calculate plane to point distance and finish
 	{
 		float dist = planeToPointDistance(m_referencePlane, P);
 
-		//build graphic
+		// build graphic
 		ccHObject* g = buildGraphic(P, dist);
 
-		//add to scene graph
+		// add to scene graph
 		insertPoint->addChild(g);
 		m_app->addToDB(g, false, true, false, true);
 	}
-	else //two point mode... which points have been defined?
+	else // two point mode... which points have been defined?
 	{
-		if (!m_startPoint) //first point not yet defined - store it
+		if (!m_startPoint) // first point not yet defined - store it
 		{
-			//store point
+			// store point
 			m_startPoint = new CCVector3(P);
 
-			//create temporary graphic
+			// create temporary graphic
 			ccPointPair* temp = new ccPointPair(cloud);
 			temp->addPointIndex(itemIdx);
 			temp->showNameIn3D(true);
@@ -130,25 +131,24 @@ void ccThicknessTool::pointPicked(ccHObject* insertPoint, unsigned itemIdx, ccPo
 			insertPoint->addChild(temp);
 			m_app->addToDB(temp, false, false, false, true);
 
-			//display instructions
+			// display instructions
 			m_app->getActiveGLWindow()->displayNewMessage("Select second measurement point", ccGLWindowInterface::LOWER_LEFT_MESSAGE);
-
 		}
 		else
 		{
-			//delete temporary graphic
+			// delete temporary graphic
 			m_app->removeFromDB(m_app->dbRootObject()->find(m_graphic_id));
 
-			//calculate distance
+			// calculate distance
 			float dist = planeToPointDistance(m_referencePlane, P) - planeToPointDistance(m_referencePlane, *m_startPoint);
 
 			ccHObject* g = buildGraphic(P, dist);
 
-			//add to scene graph
+			// add to scene graph
 			insertPoint->addChild(g);
 			m_app->addToDB(g, false, true, false, true);
 
-			//finish
+			// finish
 			delete m_startPoint;
 			m_startPoint = nullptr;
 		}
@@ -160,70 +160,70 @@ ccHObject* ccThicknessTool::getInsertInterior(ccHObject* insertPoint)
 	ccHObject* p = insertPoint;
 	while (p != nullptr)
 	{
-		//object is a geoObject
+		// object is a geoObject
 		if (ccGeoObject::isGeoObject(p))
 		{
-			ccGeoObject* obj = dynamic_cast<ccGeoObject*> (p);
+			ccGeoObject* obj = dynamic_cast<ccGeoObject*>(p);
 			if (obj)
 			{
-				return obj->getRegion(ccGeoObject::INTERIOR); //return the interior
+				return obj->getRegion(ccGeoObject::INTERIOR); // return the interior
 			}
 		}
 
-		//try next parent
+		// try next parent
 		p = p->getParent();
 	}
 
-	//haven't found a geoObject - use the supplied insertPoint
-	return insertPoint; //todo
+	// haven't found a geoObject - use the supplied insertPoint
+	return insertPoint; // todo
 }
 
 ccHObject* ccThicknessTool::buildGraphic(CCVector3 endPoint, float thickness)
 {
-	//back calculate the start point
+	// back calculate the start point
 	CCVector3 start = endPoint - m_referencePlane->getNormal() * thickness;
 
-	//create point cloud and add start/end points too it
+	// create point cloud and add start/end points too it
 	ccPointCloud* verts = new ccPointCloud("vertices");
 	assert(verts);
 	verts->reserve(2);
 	verts->addPoint(start);
 	verts->addPoint(endPoint);
 	verts->invalidateBoundingBox();
-	verts->setEnabled(false); //this is used for storage only!
-	verts->setVisible(false); //this is used for storage only!
+	verts->setEnabled(false); // this is used for storage only!
+	verts->setVisible(false); // this is used for storage only!
 
-	//create a "thickness" graphic to display
+	// create a "thickness" graphic to display
 	ccThickness* graphic = new ccThickness(verts);
 	graphic->addPointIndex(0);
 	graphic->addPointIndex(1);
-	graphic->addChild(verts); //store the verts
+	graphic->addChild(verts); // store the verts
 	graphic->invalidateBoundingBox();
 	graphic->updateMetadata();
 	graphic->setName(QString::asprintf("%.3fT", std::abs(thickness)));
 	graphic->showNameIn3D(ccCompass::drawName);
 
-	//return
+	// return
 	return graphic;
 }
 
-//called when the tool is set to active (for initialization)
-void ccThicknessTool::toolActivated() 
-{ 
-	//hide all visible point clouds
+// called when the tool is set to active (for initialization)
+void ccThicknessTool::toolActivated()
+{
+	// hide all visible point clouds
 	recurseChildren(m_app->dbRootObject(), true, false);
 
-	//display instructions
+	// display instructions
 	m_app->getActiveGLWindow()->displayNewMessage("Select reference plane for thickness measurement.", ccGLWindowInterface::LOWER_LEFT_MESSAGE);
 
-	//redraw
+	// redraw
 	m_app->getActiveGLWindow()->redraw(false, false);
 }
 
-//called when the tool is set to disactive (for cleanup)
+// called when the tool is set to disactive (for cleanup)
 void ccThicknessTool::toolDisactivated()
 {
-	//delete start point object
+	// delete start point object
 	if (m_startPoint)
 	{
 		delete m_startPoint;
@@ -232,11 +232,11 @@ void ccThicknessTool::toolDisactivated()
 
 	if (m_referencePlane)
 	{
-		m_referencePlane->enableTempColor(false); //go back to normal colour
+		m_referencePlane->enableTempColor(false); // go back to normal colour
 		m_referencePlane = nullptr;
 	}
 
-	//make all point clouds visible again
+	// make all point clouds visible again
 	for (int i : m_hiddenObjects)
 	{
 		ccHObject* cld = m_app->dbRootObject()->find(i);
@@ -244,13 +244,13 @@ void ccThicknessTool::toolDisactivated()
 	}
 	m_hiddenObjects.clear();
 
-	//redraw
+	// redraw
 	m_app->getActiveGLWindow()->refresh();
 }
 
 void ccThicknessTool::recurseChildren(ccHObject* obj, bool hidePointClouds, bool hidePlanes)
 {
-	//is this a point cloud?
+	// is this a point cloud?
 	if (hidePointClouds && obj->isA(CC_TYPES::POINT_CLOUD))
 	{
 		if (obj->isVisible())
@@ -261,7 +261,7 @@ void ccThicknessTool::recurseChildren(ccHObject* obj, bool hidePointClouds, bool
 		return;
 	}
 
-	//is this a plane?
+	// is this a plane?
 	if (hidePlanes && obj->isA(CC_TYPES::PLANE))
 	{
 		if (obj->isVisible())
@@ -272,24 +272,24 @@ void ccThicknessTool::recurseChildren(ccHObject* obj, bool hidePointClouds, bool
 		return;
 	}
 
-	//recurse on children
+	// recurse on children
 	for (unsigned i = 0; i < obj->getChildrenNumber(); i++)
 	{
 		recurseChildren(obj->getChild(i), hidePointClouds, hidePlanes);
 	}
 }
 
-//called when "Return" or "Space" is pressed, or the "Accept Button" is clicked
+// called when "Return" or "Space" is pressed, or the "Accept Button" is clicked
 void ccThicknessTool::accept()
 {
-	//Reset the tool
+	// Reset the tool
 	toolDisactivated();
 
-	//go back to "plane pick mode"
+	// go back to "plane pick mode"
 	toolActivated();
 }
 
-//called when the "Escape" is pressed, or the "Cancel" button is clicked
+// called when the "Escape" is pressed, or the "Cancel" button is clicked
 void ccThicknessTool::cancel()
 {
 	toolDisactivated();
@@ -297,15 +297,15 @@ void ccThicknessTool::cancel()
 
 float ccThicknessTool::planeToPointDistance(ccPlane* plane, CCVector3 P)
 {
-	//declare array of 4 pointcoordtypes
+	// declare array of 4 pointcoordtypes
 	PointCoordinateType pEq[4];
 
-	//build equation of plane
+	// build equation of plane
 	pEq[0] = plane->getNormal().x;
 	pEq[1] = plane->getNormal().y;
 	pEq[2] = plane->getNormal().z;
-	pEq[3]= plane->getCenter().dot(plane->getNormal()); //a point on the plane dot the plane normal
+	pEq[3] = plane->getCenter().dot(plane->getNormal()); // a point on the plane dot the plane normal
 
-	//return distance
+	// return distance
 	return CCCoreLib::DistanceComputationTools::computePoint2PlaneDistance(&P, pEq);
 }

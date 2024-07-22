@@ -1,19 +1,19 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
 /** This file is directly inspired of the equivalently named file in the
 original CANUPO project, by N. Brodu and D. Lague.
@@ -22,23 +22,22 @@ original CANUPO project, by N. Brodu and D. Lague.
 #ifndef QCANUPO_CLASSIFIER_HEADER
 #define QCANUPO_CLASSIFIER_HEADER
 
-//Local
+// Local
 #include "ccPointDescriptor.h"
 
-//CCCoreLib
+// CCCoreLib
 #include <CCGeom.h>
 
-//Qt
+// Qt
 #include <QString>
 
-//system
+// system
 #include <vector>
 
 //! Classifier
 class Classifier
 {
-public: //methods
-	
+  public: // methods
 	//! 2D point
 	typedef Vector2Tpl<float> Point2D;
 
@@ -47,7 +46,7 @@ public: //methods
 
 	//! Checks the ref. points
 	/** Exchanges refPointPos and refPointNeg if necessary
-		as the user may have moved them.
+	    as the user may have moved them.
 	**/
 	bool checkRefPoints();
 
@@ -72,28 +71,27 @@ public: //methods
 	};
 
 	//! Loads a CANUPO's classifier file (.prm)
-	static bool Load(	QString filename,
-						std::vector<Classifier>& classifiers,
-						std::vector<float>& scales,
-						QString& error,
-						FileHeader* header = nullptr,
-						bool headerOnly = false);
+	static bool Load(QString                  filename,
+	                 std::vector<Classifier>& classifiers,
+	                 std::vector<float>&      scales,
+	                 QString&                 error,
+	                 FileHeader*              header     = nullptr,
+	                 bool                     headerOnly = false);
 
 	//! Saves classifier as a CANUPO's classifier file (.prm)
-	bool save(	QString filename,
-				QString& error );
+	bool save(QString  filename,
+	          QString& error);
 
-public: //members
-
-	int class1, class2;
-	std::vector<float> weightsAxis1, weightsAxis2;
+  public: // members
+	int                  class1, class2;
+	std::vector<float>   weightsAxis1, weightsAxis2;
 	std::vector<Point2D> path;
-	float absMaxXY, axisScaleRatio;
-	Point2D refPointPos, refPointNeg;
+	float                absMaxXY, axisScaleRatio;
+	Point2D              refPointPos, refPointNeg;
 
 	//! Associated descriptor ID (see ccPointDescriptor.h)
 	unsigned descriptorID;
-	
+
 	//! Dimension (per-scale)
 	unsigned dimPerScale;
 
@@ -101,4 +99,4 @@ public: //members
 	std::vector<float> scales;
 };
 
-#endif //QCANUPO_CLASSIFIER_HEADER
+#endif // QCANUPO_CLASSIFIER_HEADER

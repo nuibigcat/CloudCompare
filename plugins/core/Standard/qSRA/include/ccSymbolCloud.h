@@ -1,33 +1,32 @@
-//##########################################################################
-//#                                                                        #
-//#                      CLOUDCOMPARE PLUGIN: qSRA                         #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                           COPYRIGHT: EDF                               #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                      CLOUDCOMPARE PLUGIN: qSRA                         #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                           COPYRIGHT: EDF                               #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef QSRA_SYMBOL_CLOUD_HEADER
 #define QSRA_SYMBOL_CLOUD_HEADER
 
-//Qt
+// Qt
 #include <QString>
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 
 class ccSymbolCloud : public ccPointCloud
 {
-public:
-
+  public:
 	//! Default constructor
 	ccSymbolCloud(QString name = QString());
 
@@ -36,8 +35,8 @@ public:
 
 	//! Adds a label
 	/** Label array should have been already 'reserved' (see reserveLabelArray).
-		There should be as many labels as points at the end... (however labels
-		can be empty)
+	    There should be as many labels as points at the end... (however labels
+	    can be empty)
 	**/
 	void addLabel(QString label);
 
@@ -46,7 +45,7 @@ public:
 
 	//! Sets a given label
 	/** Label array should have been already resized (or filled).
-	**/
+	 **/
 	void setLabel(unsigned index, QString label);
 
 	//! Returns a given label
@@ -61,35 +60,61 @@ public:
 	virtual void clear() override;
 
 	//! Sets symbol size
-	void setSymbolSize(double size) { m_symbolSize = size; }
+	void setSymbolSize(double size)
+	{
+		m_symbolSize = size;
+	}
 
 	//! Returns symbol size
-	double getSymbolSize() const { return m_symbolSize; }
+	double getSymbolSize() const
+	{
+		return m_symbolSize;
+	}
 
 	//! Sets label font size
-	void setFontSize(int size) { m_fontSize = size; }
+	void setFontSize(int size)
+	{
+		m_fontSize = size;
+	}
 
 	//! Returns label font size
-	int getFontSize() const { return m_fontSize; }
+	int getFontSize() const
+	{
+		return m_fontSize;
+	}
 
 	//! Sets whether symbols should be displayed or not
-	void showSymbols(bool state) { m_showSymbols = state; }
+	void showSymbols(bool state)
+	{
+		m_showSymbols = state;
+	}
 	//! Returns whether symbols are displayed or not
-	bool symbolsShown() const { return m_showSymbols; }
+	bool symbolsShown() const
+	{
+		return m_showSymbols;
+	}
 
 	//! Sets whether labels should be displayed or not
-	void showLabels(bool state) { m_showLabels = state; }
+	void showLabels(bool state)
+	{
+		m_showLabels = state;
+	}
 	//! Returns whether labels are displayed or not
-	bool labelsShown() const { return m_showLabels; }
+	bool labelsShown() const
+	{
+		return m_showLabels;
+	}
 
 	//! Sets labels alignment flags
 	/** See ccGenericGLDisplay::TextAlign
-	**/
-	void setLabelAlignmentFlags(unsigned char flags) { m_labelAlignFlags = flags; }
+	 **/
+	void setLabelAlignmentFlags(unsigned char flags)
+	{
+		m_labelAlignFlags = flags;
+	}
 
-protected:
-
-	//inherited from ccPointCloud
+  protected:
+	// inherited from ccPointCloud
 	virtual void drawMeOnly(CC_DRAW_CONTEXT& context) override;
 
 	//! Labels array
@@ -114,4 +139,4 @@ protected:
 	ccGLCameraParameters m_lastCameraParams;
 };
 
-#endif //QSRA_SYMBOL_CLOUD_HEADER
+#endif // QSRA_SYMBOL_CLOUD_HEADER

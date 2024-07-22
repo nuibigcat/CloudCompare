@@ -1,31 +1,31 @@
-//##########################################################################
-//#                                                                        #
-//#                      CLOUDCOMPARE PLUGIN: qSRA                         #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                           COPYRIGHT: EDF                               #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                      CLOUDCOMPARE PLUGIN: qSRA                         #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                           COPYRIGHT: EDF                               #
+// #                                                                        #
+// ##########################################################################
 
 #include "profileImportDlg.h"
 
-//Qt
+// Qt
 #include <QFileDialog>
 
-//System
+// System
 #include <assert.h>
 
 ProfileImportDlg::ProfileImportDlg(QWidget* parent)
-	: QDialog(parent, Qt::Tool)
-	, Ui::ProfileImportDlg()
+    : QDialog(parent, Qt::Tool)
+    , Ui::ProfileImportDlg()
 {
 	setupUi(this);
 
@@ -41,17 +41,19 @@ void ProfileImportDlg::browseFile()
 {
 	QString filter("2D profile (*.txt)");
 
-	//open file loading dialog
-	QString filename = QFileDialog::getOpenFileName(nullptr,"Select profile file",getFilename(),filter
-#if defined( Q_OS_WIN ) && defined( _DEBUG )
-																,0,QFileDialog::DontUseNativeDialog
+	// open file loading dialog
+	QString filename = QFileDialog::getOpenFileName(nullptr, "Select profile file", getFilename(), filter
+#if defined(Q_OS_WIN) && defined(_DEBUG)
+	                                                ,
+	                                                0,
+	                                                QFileDialog::DontUseNativeDialog
 #endif
-		
-		);
+
+	);
 
 	if (filename.isEmpty())
 		return;
-	
+
 	setDefaultFilename(filename);
 }
 
