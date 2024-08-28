@@ -1,8 +1,9 @@
 #include "PCVCommand.h"
+
 #include "PCV.h"
 #include "qPCV.h"
 
-//qCC_db
+// qCC_db
 #include <ccColorScalesManager.h>
 #include <ccGenericMesh.h>
 #include <ccHObjectCaster.h>
@@ -12,44 +13,44 @@
 
 constexpr char CC_PCV_FIELD_LABEL_NAME[] = "Illuminance (PCV)";
 
-constexpr char COMMAND_PCV[] = "PCV";
-constexpr char COMMAND_PCV_N_RAYS[] = "N_RAYS";
-constexpr char COMMAND_PCV_IS_CLOSED[] = "IS_CLOSED";
-constexpr char COMMAND_PCV_180[] = "180";
+constexpr char COMMAND_PCV[]            = "PCV";
+constexpr char COMMAND_PCV_N_RAYS[]     = "N_RAYS";
+constexpr char COMMAND_PCV_IS_CLOSED[]  = "IS_CLOSED";
+constexpr char COMMAND_PCV_180[]        = "180";
 constexpr char COMMAND_PCV_RESOLUTION[] = "RESOLUTION";
 
 PCVCommand::PCVCommand()
-	: Command("PCV", COMMAND_PCV)
+    : Command("PCV", COMMAND_PCV)
 {
 }
 
-bool PCVCommand::Process(	const ccHObject::Container& candidates,
-							const std::vector<CCVector3>& rays,
-							bool meshIsClosed,
-							unsigned resolution,
-							ccProgressDialog* progressDlg/*=nullptr*/,
-							ccMainAppInterface* app/*=nullptr*/)
+bool PCVCommand::Process(const ccHObject::Container&   candidates,
+                         const std::vector<CCVector3>& rays,
+                         bool                          meshIsClosed,
+                         unsigned                      resolution,
+                         ccProgressDialog*             progressDlg /*=nullptr*/,
+                         ccMainAppInterface*           app /*=nullptr*/)
 {
-	size_t count = 0;
+	size_t count      = 0;
 	size_t errorCount = 0;
 
 	for (ccHObject* obj : candidates)
 	{
-		ccPointCloud* cloud = nullptr;
-		ccGenericMesh* mesh = nullptr;
-		QString objName("unknown");
+		ccPointCloud*  cloud = nullptr;
+		ccGenericMesh* mesh  = nullptr;
+		QString        objName("unknown");
 
 		assert(obj);
 		if (obj->isA(CC_TYPES::POINT_CLOUD))
 		{
-			//we need a real point cloud
-			cloud = ccHObjectCaster::ToPointCloud(obj);
+			// we need a real point cloud
+			cloud   = ccHObjectCaster::ToPointCloud(obj);
 			objName = cloud->getName();
 		}
 		else if (obj->isKindOf(CC_TYPES::MESH))
 		{
-			mesh = ccHObjectCaster::ToGenericMesh(obj);
-			cloud = ccHObjectCaster::ToPointCloud(mesh->getAssociatedCloud());
+			mesh    = ccHObjectCaster::ToGenericMesh(obj);
+			cloud   = ccHObjectCaster::ToPointCloud(mesh->getAssociatedCloud());
 			objName = mesh->getName();
 		}
 
@@ -62,10 +63,10 @@ bool PCVCommand::Process(	const ccHObject::Container& candidates,
 			continue;
 		}
 
-		//we get the PCV field if it already exists
+		// we get the PCV field if it already exists
 		int sfIdx = cloud->getScalarFieldIndexByName(CC_PCV_FIELD_LABEL_NAME);
 
-		//otherwise we create it
+		// otherwise we create it
 		if (sfIdx < 0)
 		{
 			sfIdx = cloud->addScalarField(CC_PCV_FIELD_LABEL_NAME);
@@ -149,10 +150,10 @@ bool PCVCommand::process(ccCommandLineInterface& cmd)
 	}
 
 	// Initialize to match PCV::Launch defaults
-	unsigned rayCount = 256;
-	bool meshIsClosed = false;
-	bool mode360 = true;
-	unsigned resolution = 1024;
+	unsigned rayCount     = 256;
+	bool     meshIsClosed = false;
+	bool     mode360      = true;
+	unsigned resolution   = 1024;
 
 	while (!cmd.arguments().empty())
 	{
@@ -174,7 +175,7 @@ bool PCVCommand::process(ccCommandLineInterface& cmd)
 		{
 			cmd.arguments().pop_front();
 			bool conversionOk = false;
-			rayCount = cmd.arguments().takeFirst().toUInt(&conversionOk);
+			rayCount          = cmd.arguments().takeFirst().toUInt(&conversionOk);
 			if (!conversionOk)
 			{
 				return cmd.error(QObject::tr("Invalid parameter: value after \"-%1\"").arg(COMMAND_PCV_N_RAYS));
@@ -184,7 +185,7 @@ bool PCVCommand::process(ccCommandLineInterface& cmd)
 		{
 			cmd.arguments().pop_front();
 			bool conversionOk = false;
-			resolution = cmd.arguments().takeFirst().toUInt(&conversionOk);
+			resolution        = cmd.arguments().takeFirst().toUInt(&conversionOk);
 			if (!conversionOk)
 			{
 				return cmd.error(QObject::tr("Invalid parameter: value after \"-%1\"").arg(COMMAND_PCV_RESOLUTION));
@@ -196,7 +197,7 @@ bool PCVCommand::process(ccCommandLineInterface& cmd)
 		}
 	}
 
-	//generates light directions
+	// generates light directions
 	std::vector<CCVector3> rays;
 	if (!PCV::GenerateRays(rayCount, rays, mode360))
 	{
@@ -230,7 +231,7 @@ bool PCVCommand::process(ccCommandLineInterface& cmd)
 	{
 		desc.basename += QString("_PCV");
 
-		//save output
+		// save output
 		if (cmd.autoSaveMode())
 		{
 			QString errorStr = cmd.exportEntity(desc);
@@ -245,7 +246,7 @@ bool PCVCommand::process(ccCommandLineInterface& cmd)
 	{
 		desc.basename += QString("_PCV");
 
-		//save output
+		// save output
 		if (cmd.autoSaveMode())
 		{
 			QString errorStr = cmd.exportEntity(desc);

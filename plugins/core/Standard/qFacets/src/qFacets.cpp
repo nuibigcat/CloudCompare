@@ -1,97 +1,95 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qFacets                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                      COPYRIGHT: Thomas Dewez, BRGM                     #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qFacets                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                      COPYRIGHT: Thomas Dewez, BRGM                     #
+// #                                                                        #
+// ##########################################################################
 
 #include "qFacets.h"
 
-//Local
-#include "facetsClassifier.h"
+// Local
 #include "classificationParamsDlg.h"
-#include "facetsExportDlg.h"
-#include "stereogramDlg.h"
-#include "kdTreeForFacetExtraction.h"
-#include "fastMarchingForFacetExtraction.h"
 #include "disclaimerDialog.h"
+#include "facetsClassifier.h"
+#include "facetsExportDlg.h"
+#include "fastMarchingForFacetExtraction.h"
+#include "kdTreeForFacetExtraction.h"
+#include "stereogramDlg.h"
 
-//Qt
-#include <QtGui>
-#include <QInputDialog>
+// Qt
 #include <QElapsedTimer>
-#include <QSettings>
 #include <QFileInfo>
+#include <QInputDialog>
 #include <QMessageBox>
+#include <QSettings>
+#include <QtGui>
 
-//CCCoreLib
+// CCCoreLib
 #include <Neighbourhood.h>
 
-//qCC_db
+// qCC_db
+#include <ShpDBFFields.h>
 #include <ccFileUtils.h>
 #include <ccHObjectCaster.h>
 #include <ccMesh.h>
+#include <ccOctree.h> //for ComputeAverageNorm
 #include <ccProgressDialog.h>
 #include <ccScalarField.h>
-#include <ccOctree.h> //for ComputeAverageNorm
-#include <ShpDBFFields.h>
 
-//qCC_io
+// qCC_io
 #include <ShpFilter.h>
 
+// semi-persistent dialog values
+static unsigned s_octreeLevel               = 8;
+static bool     s_fmUseRetroProjectionError = false;
 
-//semi-persistent dialog values
-static unsigned s_octreeLevel = 8;
-static bool		s_fmUseRetroProjectionError = false;
+static unsigned s_minPointsPerFacet = 10;
+static double   s_errorMaxPerFacet  = 0.2;
+static int      s_errorMeasureType  = 3; // max dist @ 99 %
+static double   s_maxEdgeLength     = 1.0;
 
-static unsigned	s_minPointsPerFacet = 10;
-static double	s_errorMaxPerFacet = 0.2;
-static int		s_errorMeasureType = 3; //max dist @ 99 %
-static double	s_maxEdgeLength = 1.0;
+static double s_kdTreeFusionMaxAngle_deg        = 20.0;
+static double s_kdTreeFusionMaxRelativeDistance = 1.0;
 
-static double	s_kdTreeFusionMaxAngle_deg = 20.0;
-static double	s_kdTreeFusionMaxRelativeDistance = 1.0;
+static double s_classifAngleStep = 30.0;
+static double s_classifMaxDist   = 1.0;
 
-static double	s_classifAngleStep = 30.0;
-static double	s_classifMaxDist = 1.0;
-
-static double	s_stereogramAngleStep = 30.0;
-static double	s_stereogramResolution_deg = 5.0;
-static ccPointCloud* s_lastCloud = nullptr;
-
+static double        s_stereogramAngleStep      = 30.0;
+static double        s_stereogramResolution_deg = 5.0;
+static ccPointCloud* s_lastCloud                = nullptr;
 
 qFacets::qFacets(QObject* parent)
-	: QObject(parent)
-	, ccStdPluginInterface( ":/CC/plugin/qFacets/info.json" )
-	, m_doFuseKdTreeCells(nullptr)
-	, m_fastMarchingExtraction(nullptr)
-	, m_doExportFacets(nullptr)
-	, m_doExportFacetsInfo(nullptr)
-	, m_doClassifyFacetsByAngle(nullptr)
-	, m_doShowStereogram(nullptr)
-	, m_stereogramDialog(nullptr)
+    : QObject(parent)
+    , ccStdPluginInterface(":/CC/plugin/qFacets/info.json")
+    , m_doFuseKdTreeCells(nullptr)
+    , m_fastMarchingExtraction(nullptr)
+    , m_doExportFacets(nullptr)
+    , m_doExportFacetsInfo(nullptr)
+    , m_doClassifyFacetsByAngle(nullptr)
+    , m_doShowStereogram(nullptr)
+    , m_stereogramDialog(nullptr)
 {
 }
 
-QList<QAction *> qFacets::getActions()
-{	
-	//actions
+QList<QAction*> qFacets::getActions()
+{
+	// actions
 	if (!m_doFuseKdTreeCells)
 	{
 		m_doFuseKdTreeCells = new QAction("Extract facets (Kd-tree)", this);
 		m_doFuseKdTreeCells->setToolTip("Detect planar facets by fusing Kd-tree cells");
 		m_doFuseKdTreeCells->setIcon(QIcon(QString::fromUtf8(":/CC/plugin/qFacets/images/extractKD.png")));
-		//connect signal
+		// connect signal
 		connect(m_doFuseKdTreeCells, &QAction::triggered, this, &qFacets::fuseKdTreeCells);
 	}
 
@@ -100,7 +98,7 @@ QList<QAction *> qFacets::getActions()
 		m_fastMarchingExtraction = new QAction("Extract facets (Fast Marching)", this);
 		m_fastMarchingExtraction->setToolTip("Detect planar facets with Fast Marching");
 		m_fastMarchingExtraction->setIcon(QIcon(QString::fromUtf8(":/CC/plugin/qFacets/images/extractFM.png")));
-		//connect signal
+		// connect signal
 		connect(m_fastMarchingExtraction, &QAction::triggered, this, &qFacets::extractFacetsWithFM);
 	}
 
@@ -109,7 +107,7 @@ QList<QAction *> qFacets::getActions()
 		m_doExportFacets = new QAction("Export facets (SHP)", this);
 		m_doExportFacets->setToolTip("Exports one or several facets to a shapefile");
 		m_doExportFacets->setIcon(QIcon(QString::fromUtf8(":/CC/plugin/qFacets/images/shpFile.png")));
-		//connect signal
+		// connect signal
 		connect(m_doExportFacets, &QAction::triggered, this, &qFacets::exportFacets);
 	}
 
@@ -118,7 +116,7 @@ QList<QAction *> qFacets::getActions()
 		m_doExportFacetsInfo = new QAction("Export facets info (CSV)", this);
 		m_doExportFacetsInfo->setToolTip("Exports various information on a set of facets (ASCII CSV file)");
 		m_doExportFacetsInfo->setIcon(QIcon(QString::fromUtf8(":/CC/plugin/qFacets/images/csvFile.png")));
-		//connect signal
+		// connect signal
 		connect(m_doExportFacetsInfo, &QAction::triggered, this, &qFacets::exportFacetsInfo);
 	}
 
@@ -127,10 +125,9 @@ QList<QAction *> qFacets::getActions()
 		m_doClassifyFacetsByAngle = new QAction("Classify facets by orientation", this);
 		m_doClassifyFacetsByAngle->setToolTip("Classifies facets based on their orienation (dip & dip direction)");
 		m_doClassifyFacetsByAngle->setIcon(QIcon(QString::fromUtf8(":/CC/plugin/qFacets/images/classifIcon.png")));
-		//connect signal
-		connect(m_doClassifyFacetsByAngle, &QAction::triggered, this, [=] () {
-			classifyFacetsByAngle();
-		} );
+		// connect signal
+		connect(m_doClassifyFacetsByAngle, &QAction::triggered, this, [=]()
+		        { classifyFacetsByAngle(); });
 	}
 
 	if (!m_doShowStereogram)
@@ -138,17 +135,17 @@ QList<QAction *> qFacets::getActions()
 		m_doShowStereogram = new QAction("Show stereogram", this);
 		m_doShowStereogram->setToolTip("Computes and displays a stereogram (+ interactive filtering)");
 		m_doShowStereogram->setIcon(QIcon(QString::fromUtf8(":/CC/plugin/qFacets/images/stereogram.png")));
-		//connect signal
+		// connect signal
 		connect(m_doShowStereogram, &QAction::triggered, this, &qFacets::showStereogram);
 	}
 
-	return QList<QAction *>{
-				m_doFuseKdTreeCells,
-				m_fastMarchingExtraction,
-				m_doExportFacets,
-				m_doExportFacetsInfo,
-				m_doClassifyFacetsByAngle,
-				m_doShowStereogram,
+	return QList<QAction*>{
+	    m_doFuseKdTreeCells,
+	    m_fastMarchingExtraction,
+	    m_doExportFacets,
+	    m_doExportFacetsInfo,
+	    m_doClassifyFacetsByAngle,
+	    m_doShowStereogram,
 	};
 }
 
@@ -180,7 +177,7 @@ void qFacets::fuseKdTreeCells()
 
 void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 {
-	//disclaimer accepted?
+	// disclaimer accepted?
 	if (!ShowDisclaimer(m_app))
 		return;
 
@@ -188,9 +185,9 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 	if (!m_app)
 		return;
 
-	//we expect a unique cloud as input
+	// we expect a unique cloud as input
 	const ccHObject::Container& selectedEntities = m_app->getSelectedEntities();
-	ccPointCloud* pc = (m_app->haveOneSelection() ? ccHObjectCaster::ToPointCloud(selectedEntities.back()) : nullptr);
+	ccPointCloud*               pc               = (m_app->haveOneSelection() ? ccHObjectCaster::ToPointCloud(selectedEntities.back()) : nullptr);
 	if (!pc)
 	{
 		m_app->dispToConsole("Select one and only one point cloud!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -203,12 +200,12 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 		return;
 	}
 
-	//first time: we compute the max edge length automatically
+	// first time: we compute the max edge length automatically
 	if (s_lastCloud != pc)
 	{
-		s_maxEdgeLength = static_cast<double>(pc->getOwnBB().getMinBoxDim()) / 50;
+		s_maxEdgeLength     = static_cast<double>(pc->getOwnBB().getMinBoxDim()) / 50;
 		s_minPointsPerFacet = std::max<unsigned>(pc->size() / 100000, 10);
-		s_lastCloud = pc;
+		s_lastCloud         = pc;
 	}
 
 	CellsFusionDlg fusionDlg(algo, m_app->getMainWindow());
@@ -229,16 +226,16 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 	if (!fusionDlg.exec())
 		return;
 
-	s_octreeLevel = fusionDlg.octreeLevelSpinBox->value();
-	s_fmUseRetroProjectionError = fusionDlg.useRetroProjectionCheckBox->isChecked();
-	s_minPointsPerFacet = fusionDlg.minPointsPerFacetSpinBox->value();
-	s_errorMeasureType = fusionDlg.errorMeasureComboBox->currentIndex();
-	s_errorMaxPerFacet = fusionDlg.maxRMSDoubleSpinBox->value();
-	s_kdTreeFusionMaxAngle_deg = fusionDlg.maxAngleDoubleSpinBox->value();
+	s_octreeLevel                     = fusionDlg.octreeLevelSpinBox->value();
+	s_fmUseRetroProjectionError       = fusionDlg.useRetroProjectionCheckBox->isChecked();
+	s_minPointsPerFacet               = fusionDlg.minPointsPerFacetSpinBox->value();
+	s_errorMeasureType                = fusionDlg.errorMeasureComboBox->currentIndex();
+	s_errorMaxPerFacet                = fusionDlg.maxRMSDoubleSpinBox->value();
+	s_kdTreeFusionMaxAngle_deg        = fusionDlg.maxAngleDoubleSpinBox->value();
 	s_kdTreeFusionMaxRelativeDistance = fusionDlg.maxRelativeDistDoubleSpinBox->value();
-	s_maxEdgeLength = fusionDlg.maxEdgeLengthDoubleSpinBox->value();
+	s_maxEdgeLength                   = fusionDlg.maxEdgeLengthDoubleSpinBox->value();
 
-	//convert 'errorMeasureComboBox' index to enum
+	// convert 'errorMeasureComboBox' index to enum
 	CCCoreLib::DistanceComputationTools::ERROR_MEASURES errorMeasure = CCCoreLib::DistanceComputationTools::RMS;
 	switch (s_errorMeasureType)
 	{
@@ -262,9 +259,9 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 		break;
 	}
 
-	//create scalar field to host the fusion result
+	// create scalar field to host the fusion result
 	const char c_defaultSFName[] = "facet indexes";
-	int sfIdx = pc->getScalarFieldIndexByName(c_defaultSFName);
+	int        sfIdx             = pc->getScalarFieldIndexByName(c_defaultSFName);
 	if (sfIdx < 0)
 		sfIdx = pc->addScalarField(c_defaultSFName);
 	if (sfIdx < 0)
@@ -274,7 +271,7 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 	}
 	pc->setCurrentScalarField(sfIdx);
 
-	//computation
+	// computation
 	QElapsedTimer eTimer;
 	eTimer.start();
 	ccProgressDialog pDlg(true, m_app->getMainWindow());
@@ -282,7 +279,7 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 	bool success = true;
 	if (algo == CellsFusionDlg::ALGO_KD_TREE)
 	{
-		//we need a kd-tree
+		// we need a kd-tree
 		QElapsedTimer eTimer;
 		eTimer.start();
 		ccKdTree kdtree(pc);
@@ -293,13 +290,13 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 			m_app->dispToConsole(QString("[qFacets] Kd-tree construction timing: %1 s").arg(static_cast<double>(elapsedTime_ms) / 1.0e3, 0, 'f', 3), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 
 			success = ccKdTreeForFacetExtraction::FuseCells(
-				&kdtree,
-				s_errorMaxPerFacet,
-				errorMeasure,
-				s_kdTreeFusionMaxAngle_deg,
-				static_cast<PointCoordinateType>(s_kdTreeFusionMaxRelativeDistance),
-				true,
-				&pDlg);
+			    &kdtree,
+			    s_errorMaxPerFacet,
+			    errorMeasure,
+			    s_kdTreeFusionMaxAngle_deg,
+			    static_cast<PointCoordinateType>(s_kdTreeFusionMaxRelativeDistance),
+			    true,
+			    &pDlg);
 		}
 		else
 		{
@@ -310,20 +307,20 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 	else if (algo == CellsFusionDlg::ALGO_FAST_MARCHING)
 	{
 		int result = FastMarchingForFacetExtraction::ExtractPlanarFacets(
-			pc,
-			static_cast<unsigned char>(s_octreeLevel),
-			static_cast<ScalarType>(s_errorMaxPerFacet),
-			errorMeasure,
-			s_fmUseRetroProjectionError,
-			&pDlg,
-			pc->getOctree().data());
+		    pc,
+		    static_cast<unsigned char>(s_octreeLevel),
+		    static_cast<ScalarType>(s_errorMaxPerFacet),
+		    errorMeasure,
+		    s_fmUseRetroProjectionError,
+		    &pDlg,
+		    pc->getOctree().data());
 
 		success = (result >= 0);
 	}
 
 	if (success)
 	{
-		pc->setCurrentScalarField(sfIdx); //for AutoSegmentationTools::extractConnectedComponents
+		pc->setCurrentScalarField(sfIdx); // for AutoSegmentationTools::extractConnectedComponents
 
 		CCCoreLib::ReferenceCloudContainer components;
 		if (!CCCoreLib::AutoSegmentationTools::extractConnectedComponents(pc, components))
@@ -332,18 +329,18 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 		}
 		else
 		{
-			//we remove the temporary scalar field (otherwise it will be copied to the sub-clouds!)
+			// we remove the temporary scalar field (otherwise it will be copied to the sub-clouds!)
 			ccScalarField* indexSF = static_cast<ccScalarField*>(pc->getScalarField(sfIdx));
 			if (!indexSF)
 			{
 				assert(false);
 				return;
 			}
-			indexSF->link(); //to prevent deletion when calling deleteScalarField below
+			indexSF->link(); // to prevent deletion when calling deleteScalarField below
 			pc->deleteScalarField(sfIdx);
 			sfIdx = -1;
 
-			bool error = false;
+			bool       error = false;
 			ccHObject* group = createFacets(pc, components, s_minPointsPerFacet, s_maxEdgeLength, false, error);
 
 			if (group)
@@ -369,11 +366,11 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 				}
 				else
 				{
-					//we put the scalar field back
+					// we put the scalar field back
 					sfIdx = pc->addScalarField(indexSF);
 				}
 
-				//pc->setEnabled(false);
+				// pc->setEnabled(false);
 				m_app->addToDB(group);
 				group->prepareDisplayForRefresh();
 			}
@@ -401,33 +398,33 @@ void qFacets::extractFacets(CellsFusionDlg::Algorithm algo)
 #endif
 	}
 
-	//currently selected entities appearance may have changed!
+	// currently selected entities appearance may have changed!
 	m_app->redrawAll();
 }
 
-ccHObject* qFacets::createFacets(	ccPointCloud* cloud,
-									CCCoreLib::ReferenceCloudContainer& components,
-									unsigned minPointsPerComponent,
-									double maxEdgeLength,
-									bool randomColors,
-									bool& error )
+ccHObject* qFacets::createFacets(ccPointCloud*                       cloud,
+                                 CCCoreLib::ReferenceCloudContainer& components,
+                                 unsigned                            minPointsPerComponent,
+                                 double                              maxEdgeLength,
+                                 bool                                randomColors,
+                                 bool&                               error)
 {
 	if (!cloud)
 	{
 		return nullptr;
 	}
 
-	//we create a new group to store all input CCs as 'facets'
+	// we create a new group to store all input CCs as 'facets'
 	ccHObject* ccGroup = new ccHObject(cloud->getName() + QString(" [facets]"));
 	ccGroup->setDisplay(cloud->getDisplay());
 	ccGroup->setVisible(true);
 
 	bool cloudHasNormal = cloud->hasNormals();
 
-	//number of input components
+	// number of input components
 	size_t componentCount = components.size();
 
-	//progress notification
+	// progress notification
 	ccProgressDialog pDlg(true, m_app->getMainWindow());
 	pDlg.setMethodTitle(QObject::tr("Facets creation"));
 	pDlg.setInfo(QObject::tr("Components: %1").arg(componentCount));
@@ -435,20 +432,20 @@ ccHObject* qFacets::createFacets(	ccPointCloud* cloud,
 	pDlg.show();
 	QApplication::processEvents();
 
-	//for each component
+	// for each component
 	error = false;
 	while (!components.empty())
 	{
 		CCCoreLib::ReferenceCloud* compIndexes = components.back();
 		components.pop_back();
 
-		//if it has enough points
+		// if it has enough points
 		if (compIndexes && compIndexes->size() >= minPointsPerComponent)
 		{
 			ccPointCloud* facetCloud = cloud->partialClone(compIndexes);
 			if (!facetCloud)
 			{
-				//not enough  memory!
+				// not enough  memory!
 				error = true;
 				delete facetCloud;
 				facetCloud = nullptr;
@@ -470,7 +467,7 @@ ccHObject* qFacets::createFacets(	ccPointCloud* cloud,
 						facet->getContour()->copyGlobalShiftAndScale(*facetCloud);
 					}
 
-					//check the facet normal sign
+					// check the facet normal sign
 					if (cloudHasNormal)
 					{
 						CCVector3 N = ccOctree::ComputeAverageNorm(compIndexes, cloud);
@@ -483,7 +480,7 @@ ccHObject* qFacets::createFacets(	ccPointCloud* cloud,
 					facet->showNormalVector(true);
 #endif
 
-					//shall we colorize it with a random color?
+					// shall we colorize it with a random color?
 					ccColor::Rgb col;
 					ccColor::Rgb darkCol;
 					if (randomColors)
@@ -496,9 +493,9 @@ ccHObject* qFacets::createFacets(	ccPointCloud* cloud,
 					}
 					else
 					{
-						//use normal-based HSV coloring
-						CCVector3 N = facet->getNormal();
-						PointCoordinateType dip = 0;
+						// use normal-based HSV coloring
+						CCVector3           N      = facet->getNormal();
+						PointCoordinateType dip    = 0;
 						PointCoordinateType dipDir = 0;
 						ccNormalVectors::ConvertNormalToDipAndDipDir(N, dip, dipDir);
 						FacetsClassifier::GenerateSubfamilyColor(col, dip, dipDir, 0, 1, &darkCol);
@@ -518,7 +515,7 @@ ccHObject* qFacets::createFacets(	ccPointCloud* cloud,
 		}
 
 		pDlg.setValue(static_cast<int>(componentCount - components.size()));
-		//QApplication::processEvents();
+		// QApplication::processEvents();
 	}
 
 	if (ccGroup->getChildrenNumber() == 0)
@@ -534,24 +531,24 @@ void qFacets::getFacetsInCurrentSelection(FacetSet& facets) const
 {
 	facets.clear();
 
-	//look for potential facets
-	for ( ccHObject *entity : m_app->getSelectedEntities() )
+	// look for potential facets
+	for (ccHObject* entity : m_app->getSelectedEntities())
 	{
 		if (entity->isA(CC_TYPES::FACET))
 		{
 			ccFacet* facet = static_cast<ccFacet*>(entity);
-			if (facet->getContour()) //if no contour, we won't be able to save it?!
+			if (facet->getContour()) // if no contour, we won't be able to save it?!
 				facets.insert(facet);
 		}
-		else //if (entity->isA(CC_TYPES::HIERARCHY_OBJECT)) //recursively tests group's children
+		else // if (entity->isA(CC_TYPES::HIERARCHY_OBJECT)) //recursively tests group's children
 		{
 			ccHObject::Container childFacets;
 			entity->filterChildren(childFacets, true, CC_TYPES::FACET);
-			
-			for ( ccHObject *childFacet : childFacets )
+
+			for (ccHObject* childFacet : childFacets)
 			{
 				ccFacet* facet = static_cast<ccFacet*>(childFacet);
-				if (facet->getContour()) //if no contour, we won't be able to save it?!
+				if (facet->getContour()) // if no contour, we won't be able to save it?!
 				{
 					facets.insert(facet);
 				}
@@ -560,44 +557,45 @@ void qFacets::getFacetsInCurrentSelection(FacetSet& facets) const
 	}
 }
 
-//standard meta-data for the qFacets plugin
+// standard meta-data for the qFacets plugin
 struct FacetMetaData
 {
-	int facetIndex;
-	CCVector3 center;
+	int        facetIndex;
+	CCVector3  center;
 	CCVector3d globalCenter;
-	CCVector3 normal;
-	double surface;
-	int dip_deg;
-	int dipDir_deg;
-	double rms;
-	int familyIndex;
-	int subfamilyIndex;
+	CCVector3  normal;
+	double     surface;
+	int        dip_deg;
+	int        dipDir_deg;
+	double     rms;
+	int        familyIndex;
+	int        subfamilyIndex;
 
 	//! Default constructor
 	FacetMetaData()
-		: facetIndex(-1)
-		, center(0, 0, 0)
-		, globalCenter(0, 0, 0)
-		, normal(0, 0, 1)
-		, surface(0.0)
-		, dip_deg(0)
-		, dipDir_deg(0)
-		, rms(0.0)
-		, familyIndex(0)
-		, subfamilyIndex(0)
-	{}
+	    : facetIndex(-1)
+	    , center(0, 0, 0)
+	    , globalCenter(0, 0, 0)
+	    , normal(0, 0, 1)
+	    , surface(0.0)
+	    , dip_deg(0)
+	    , dipDir_deg(0)
+	    , rms(0.0)
+	    , familyIndex(0)
+	    , subfamilyIndex(0)
+	{
+	}
 };
 
-//helper: extract all meta-data information form a facet
+// helper: extract all meta-data information form a facet
 void GetFacetMetaData(ccFacet* facet, FacetMetaData& data)
 {
-	//try to get the facet index from the facet name!
+	// try to get the facet index from the facet name!
 	{
 		QStringList tokens = facet->getName().split(" ", QString::SkipEmptyParts);
 		if (tokens.size() > 1 && tokens[0] == QString("facet"))
 		{
-			bool ok = true;
+			bool ok         = true;
 			data.facetIndex = tokens[1].toInt(&ok);
 			if (!ok)
 				data.facetIndex = -1;
@@ -619,11 +617,11 @@ void GetFacetMetaData(ccFacet* facet, FacetMetaData& data)
 		data.globalCenter = data.center.toDouble();
 	}
 
-	data.normal = facet->getNormal();
+	data.normal  = facet->getNormal();
 	data.surface = facet->getSurface();
-	data.rms = facet->getRMS();
+	data.rms     = facet->getRMS();
 
-	//family and subfamily indexes
+	// family and subfamily indexes
 	QVariant fi = facet->getMetaData(s_OriFamilyKey);
 	if (fi.isValid())
 		data.familyIndex = fi.toInt();
@@ -631,32 +629,32 @@ void GetFacetMetaData(ccFacet* facet, FacetMetaData& data)
 	if (sfi.isValid())
 		data.subfamilyIndex = sfi.toInt();
 
-	//compute dip direction & dip
+	// compute dip direction & dip
 	{
 		PointCoordinateType dipDir = 0;
-		PointCoordinateType dip = 0;
+		PointCoordinateType dip    = 0;
 		ccNormalVectors::ConvertNormalToDipAndDipDir(data.normal, dip, dipDir);
 		data.dipDir_deg = static_cast<int>(dipDir);
-		data.dip_deg = static_cast<int>(dip);
+		data.dip_deg    = static_cast<int>(dip);
 	}
 }
 
-//helper: computes a facet horizontal and vertical extensions
+// helper: computes a facet horizontal and vertical extensions
 void ComputeFacetExtensions(CCVector3& N, ccPolyline* facetContour, double& horizExt, double& vertExt)
 {
-	//horizontal and vertical extensions
+	// horizontal and vertical extensions
 	horizExt = vertExt = 0;
 
 	CCCoreLib::GenericIndexedCloudPersist* vertCloud = facetContour->getAssociatedCloud();
 	if (vertCloud)
 	{
-		//oriRotMat.applyRotation(N); //DGM: oriRotMat is only for display!
-		//we assume that at this point the "up" direction is always (0,0,1)
+		// oriRotMat.applyRotation(N); //DGM: oriRotMat is only for display!
+		// we assume that at this point the "up" direction is always (0,0,1)
 		CCVector3 Xf(1, 0, 0);
 		CCVector3 Yf(0, 1, 0);
-		//we get the horizontal vector on the plane
+		// we get the horizontal vector on the plane
 		CCVector3 D = CCVector3(0, 0, 1).cross(N);
-		if ( CCCoreLib::GreaterThanSquareEpsilon( D.norm2() ) ) //otherwise the facet is horizontal!
+		if (CCCoreLib::GreaterThanSquareEpsilon(D.norm2())) // otherwise the facet is horizontal!
 		{
 			Yf = D;
 			Yf.normalize();
@@ -669,11 +667,11 @@ void ComputeFacetExtensions(CCVector3& N, ccPolyline* facetContour, double& hori
 		for (unsigned i = 0; i < vertCloud->size(); ++i)
 		{
 			const CCVector3 P = *(vertCloud->getPoint(i)) - *G;
-			CCVector3 p(P.dot(Xf), P.dot(Yf), 0);
+			CCVector3       p(P.dot(Xf), P.dot(Yf), 0);
 			box.add(p);
 		}
 
-		vertExt = box.getDiagVec().x;
+		vertExt  = box.getDiagVec().x;
 		horizExt = box.getDiagVec().y;
 	}
 }
@@ -684,11 +682,11 @@ void qFacets::exportFacets()
 	if (!m_app)
 		return;
 
-	//disclaimer accepted?
+	// disclaimer accepted?
 	if (!ShowDisclaimer(m_app))
 		return;
 
-	//Retrive selected facets
+	// Retrive selected facets
 	FacetSet facets;
 	getFacetsInCurrentSelection(facets);
 
@@ -701,7 +699,7 @@ void qFacets::exportFacets()
 
 	FacetsExportDlg fDlg(FacetsExportDlg::SHAPE_FILE_IO, m_app->getMainWindow());
 
-	//persistent settings (default export path)
+	// persistent settings (default export path)
 	QSettings settings;
 	settings.beginGroup("qFacets");
 	QString facetsSavePath = settings.value("exportPath", ccFileUtils::defaultDocPath()).toString();
@@ -712,17 +710,17 @@ void qFacets::exportFacets()
 
 	QString filename = fDlg.destinationPathLineEdit->text();
 
-	//save current export path to persistent settings
+	// save current export path to persistent settings
 	settings.setValue("exportPath", QFileInfo(filename).absolutePath());
 
 	if (QFile(filename).exists())
 	{
-		//if the file already exists, ask for confirmation!
+		// if the file already exists, ask for confirmation!
 		if (QMessageBox::warning(m_app->getMainWindow(), "File already exists!", "File already exists! Are you sure you want to overwrite it?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
 			return;
 	}
 
-	//fields (shapefile) - WARNING names must not have more than 10 chars!
+	// fields (shapefile) - WARNING names must not have more than 10 chars!
 	IntegerDBFField  facetIndex("index");
 	DoubleDBFField   facetSurface("surface");
 	DoubleDBFField   facetRMS("rms");
@@ -763,12 +761,12 @@ void qFacets::exportFacets()
 
 	ccHObject toSave("facets");
 
-	//depending on the 'main orientation', the job is more or less easy ;)
+	// depending on the 'main orientation', the job is more or less easy ;)
 	bool useNativeOrientation = fDlg.nativeOriRadioButton->isChecked();
 	bool useGlobalOrientation = fDlg.verticalOriRadioButton->isChecked();
 	bool useCustomOrientation = fDlg.customOriRadioButton->isChecked();
 
-	//Default base
+	// Default base
 	CCVector3 X(1, 0, 0);
 	CCVector3 Y(0, 1, 0);
 	CCVector3 Z(0, 0, 1);
@@ -778,19 +776,19 @@ void qFacets::exportFacets()
 	{
 		if (useCustomOrientation)
 		{
-			Z = CCVector3(	static_cast<PointCoordinateType>(fDlg.nXLineEdit->text().toDouble()),
-							static_cast<PointCoordinateType>(fDlg.nYLineEdit->text().toDouble()),
-							static_cast<PointCoordinateType>(fDlg.nZLineEdit->text().toDouble()));
+			Z = CCVector3(static_cast<PointCoordinateType>(fDlg.nXLineEdit->text().toDouble()),
+			              static_cast<PointCoordinateType>(fDlg.nYLineEdit->text().toDouble()),
+			              static_cast<PointCoordinateType>(fDlg.nZLineEdit->text().toDouble()));
 			Z.normalize();
 		}
 		else if (useGlobalOrientation)
 		{
-			//we compute the mean orientation (weighted by each facet's surface)
+			// we compute the mean orientation (weighted by each facet's surface)
 			CCVector3d Nsum(0, 0, 0);
 			for (FacetSet::iterator it = facets.begin(); it != facets.end(); ++it)
 			{
-				double surf = (*it)->getSurface();
-				CCVector3 N = (*it)->getNormal();
+				double    surf = (*it)->getSurface();
+				CCVector3 N    = (*it)->getNormal();
 				Nsum.x += static_cast<double>(N.x) * surf;
 				Nsum.y += static_cast<double>(N.y) * surf;
 				Nsum.z += static_cast<double>(N.z) * surf;
@@ -798,13 +796,13 @@ void qFacets::exportFacets()
 			Nsum.normalize();
 
 			Z = CCVector3(static_cast<PointCoordinateType>(Nsum.x),
-				static_cast<PointCoordinateType>(Nsum.y),
-				static_cast<PointCoordinateType>(Nsum.z));
+			              static_cast<PointCoordinateType>(Nsum.y),
+			              static_cast<PointCoordinateType>(Nsum.z));
 		}
 
-		//update X & Y
+		// update X & Y
 		CCVector3 D = Z.cross(CCVector3(0, 0, 1));
-		if ( CCCoreLib::GreaterThanSquareEpsilon( D.norm2() ) ) //otherwise the vertical dir hasn't changed!
+		if (CCCoreLib::GreaterThanSquareEpsilon(D.norm2())) // otherwise the vertical dir hasn't changed!
 		{
 			X = -D;
 			X.normalize();
@@ -812,14 +810,14 @@ void qFacets::exportFacets()
 		}
 	}
 
-	//we compute the mean center (weighted by each facet's surface)
+	// we compute the mean center (weighted by each facet's surface)
 	CCVector3 C(0, 0, 0);
 	{
 		double weightSum = 0;
 		for (FacetSet::iterator it = facets.begin(); it != facets.end(); ++it)
 		{
-			double surf = (*it)->getSurface();
-			CCVector3 Ci = (*it)->getCenter();
+			double    surf = (*it)->getSurface();
+			CCVector3 Ci   = (*it)->getCenter();
 			C += Ci * static_cast<PointCoordinateType>(surf);
 			weightSum += surf;
 		}
@@ -827,7 +825,7 @@ void qFacets::exportFacets()
 			C /= static_cast<PointCoordinateType>(weightSum);
 	}
 
-	//determine the 'global' orientation matrix
+	// determine the 'global' orientation matrix
 	ccGLMatrix oriRotMat;
 	oriRotMat.toIdentity();
 	if (!useNativeOrientation)
@@ -849,22 +847,22 @@ void qFacets::exportFacets()
 		oriRotMat.setTranslation(oriRotMat.getTranslationAsVec3D() + C);
 	}
 
-	//for each facet
+	// for each facet
 	for (FacetSet::iterator it = facets.begin(); it != facets.end(); ++it)
 	{
-		ccFacet* facet = *it;
-		ccPolyline* poly = facet->getContour();
+		ccFacet*    facet = *it;
+		ccPolyline* poly  = facet->getContour();
 
-		//if necessary, we create a (temporary) new facet
+		// if necessary, we create a (temporary) new facet
 		if (!useNativeOrientation)
 		{
 			CCCoreLib::GenericIndexedCloudPersist* vertices = poly->getAssociatedCloud();
 			if (!vertices || vertices->size() < 3)
 				continue;
 
-			//create (temporary) new polyline
-			ccPolyline* newPoly = new ccPolyline(*poly);
-			ccPointCloud* pc = (newPoly ? dynamic_cast<ccPointCloud*>(newPoly->getAssociatedCloud()) : nullptr);
+			// create (temporary) new polyline
+			ccPolyline*   newPoly = new ccPolyline(*poly);
+			ccPointCloud* pc      = (newPoly ? dynamic_cast<ccPointCloud*>(newPoly->getAssociatedCloud()) : nullptr);
 			if (pc)
 			{
 				pc->applyGLTransformation_recursive(&oriRotMat);
@@ -881,15 +879,15 @@ void qFacets::exportFacets()
 
 		toSave.addChild(poly, useNativeOrientation ? ccHObject::DP_NONE : ccHObject::DP_PARENT_OF_OTHER);
 
-		//save associated meta-data as 'shapefile' fields
+		// save associated meta-data as 'shapefile' fields
 		{
-			//main parameters
+			// main parameters
 			FacetMetaData data;
 			GetFacetMetaData(facet, data);
 
-			//horizontal and vertical extensions
+			// horizontal and vertical extensions
 			double horizExt = 0;
-			double vertExt = 0;
+			double vertExt  = 0;
 			ComputeFacetExtensions(data.normal, poly, horizExt, vertExt);
 
 			facetIndex.values.push_back(data.facetIndex);
@@ -904,11 +902,11 @@ void qFacets::exportFacets()
 			facetGlobalBarycenter.values.push_back(data.globalCenter);
 			vertExtension.values.push_back(vertExt);
 			horizExtension.values.push_back(horizExt);
-			surfaceExtension.values.push_back(horizExt*vertExt);
+			surfaceExtension.values.push_back(horizExt * vertExt);
 		}
 	}
 
-	//save entities
+	// save entities
 	if (toSave.getChildrenNumber())
 	{
 		std::vector<GenericDBFField*> fields;
@@ -945,16 +943,15 @@ void qFacets::showStereogram()
 	if (!m_app)
 		return;
 
-	//disclaimer accepted?
+	// disclaimer accepted?
 	if (!ShowDisclaimer(m_app))
 		return;
 
-	//we expect a facet group or a cloud
+	// we expect a facet group or a cloud
 	const ccHObject::Container& selectedEntities = m_app->getSelectedEntities();
 	if (!m_app->haveOneSelection()
-		|| (!selectedEntities.back()->isA(CC_TYPES::HIERARCHY_OBJECT)
-		&& !selectedEntities.back()->isA(CC_TYPES::POINT_CLOUD))
-		)
+	    || (!selectedEntities.back()->isA(CC_TYPES::HIERARCHY_OBJECT)
+	        && !selectedEntities.back()->isA(CC_TYPES::POINT_CLOUD)))
 	{
 		m_app->dispToConsole("Select a group of facets or a point cloud!");
 		return;
@@ -966,14 +963,14 @@ void qFacets::showStereogram()
 	if (!stereogramParamsDlg.exec())
 		return;
 
-	s_stereogramAngleStep = stereogramParamsDlg.angleStepDoubleSpinBox->value();
+	s_stereogramAngleStep      = stereogramParamsDlg.angleStepDoubleSpinBox->value();
 	s_stereogramResolution_deg = stereogramParamsDlg.resolutionDoubleSpinBox->value();
 
-	if ( m_stereogramDialog == nullptr )
+	if (m_stereogramDialog == nullptr)
 	{
-		m_stereogramDialog = new StereogramDialog( m_app );
+		m_stereogramDialog = new StereogramDialog(m_app);
 	}
-	
+
 	if (m_stereogramDialog->init(s_stereogramAngleStep, selectedEntities.back(), s_stereogramResolution_deg))
 	{
 		m_stereogramDialog->show();
@@ -987,11 +984,11 @@ void qFacets::classifyFacetsByAngle()
 	if (!m_app)
 		return;
 
-	//disclaimer accepted?
+	// disclaimer accepted?
 	if (!ShowDisclaimer(m_app))
 		return;
 
-	//we expect a facet group
+	// we expect a facet group
 	const ccHObject::Container& selectedEntities = m_app->getSelectedEntities();
 	if (!m_app->haveOneSelection() || !selectedEntities.back()->isA(CC_TYPES::HIERARCHY_OBJECT))
 	{
@@ -1005,17 +1002,17 @@ void qFacets::classifyFacetsByAngle()
 	if (!classifParamsDlg.exec())
 		return;
 
-	s_classifAngleStep = classifParamsDlg.angleStepDoubleSpinBox->value();
-	s_stereogramAngleStep = s_classifAngleStep; //we automatically copy it to the stereogram's equivalent parameter
-	s_classifMaxDist = classifParamsDlg.maxDistDoubleSpinBox->value();
+	s_classifAngleStep    = classifParamsDlg.angleStepDoubleSpinBox->value();
+	s_stereogramAngleStep = s_classifAngleStep; // we automatically copy it to the stereogram's equivalent parameter
+	s_classifMaxDist      = classifParamsDlg.maxDistDoubleSpinBox->value();
 
 	ccHObject* group = selectedEntities.back();
 	classifyFacetsByAngle(group, s_classifAngleStep, s_classifMaxDist);
 }
 
 void qFacets::classifyFacetsByAngle(ccHObject* group,
-	double angleStep_deg,
-	double maxDist)
+                                    double     angleStep_deg,
+                                    double     maxDist)
 {
 	assert(m_app);
 	if (!m_app)
@@ -1036,7 +1033,7 @@ void qFacets::classifyFacetsByAngle(ccHObject* group,
 		if (!success)
 		{
 			m_app->dispToConsole("An error occurred while classifying the facets! (not enough memory?)",
-				ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			                     ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			return;
 		}
 	}
@@ -1050,11 +1047,11 @@ void qFacets::exportFacetsInfo()
 	if (!m_app)
 		return;
 
-	//disclaimer accepted?
+	// disclaimer accepted?
 	if (!ShowDisclaimer(m_app))
 		return;
 
-	//Retrive selected facets
+	// Retrive selected facets
 	FacetSet facets;
 	getFacetsInCurrentSelection(facets);
 
@@ -1068,7 +1065,7 @@ void qFacets::exportFacetsInfo()
 	FacetsExportDlg fDlg(FacetsExportDlg::ASCII_FILE_IO, m_app->getMainWindow());
 	fDlg.orientationGroupBox->setEnabled(false);
 
-	//persistent settings (default export path)
+	// persistent settings (default export path)
 	QSettings settings;
 	settings.beginGroup("qFacets");
 	QString facetsSavePath = settings.value("exportPath", ccFileUtils::defaultDocPath()).toString();
@@ -1079,29 +1076,30 @@ void qFacets::exportFacetsInfo()
 
 	QString filename = fDlg.destinationPathLineEdit->text();
 
-	//save current export path to persistent settings
+	// save current export path to persistent settings
 	settings.setValue("exportPath", QFileInfo(filename).absolutePath());
 
 	QFile outFile(filename);
 	if (outFile.exists())
 	{
-		//if the file already exists, ask for confirmation!
+		// if the file already exists, ask for confirmation!
 		if (QMessageBox::warning(m_app->getMainWindow(),
-			"Overwrite",
-			"File already exists! Are you sure you want to overwrite it?",
-			QMessageBox::Yes,
-			QMessageBox::No) == QMessageBox::No)
+		                         "Overwrite",
+		                         "File already exists! Are you sure you want to overwrite it?",
+		                         QMessageBox::Yes,
+		                         QMessageBox::No)
+		    == QMessageBox::No)
 			return;
 	}
 
-	//open CSV file
+	// open CSV file
 	if (!outFile.open(QFile::WriteOnly | QFile::Text))
 	{
 		m_app->dispToConsole(QString("Failed to open file for writing! Check available space and access rights"), ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
 
-	//write header
+	// write header
 	QTextStream outStream(&outFile);
 	outStream << "Index;";
 	outStream << " CenterX;";
@@ -1124,15 +1122,15 @@ void qFacets::exportFacetsInfo()
 	outStream << " Subfamily ind.;";
 	outStream << " \n";
 
-	//write data (one line per facet)
+	// write data (one line per facet)
 	for (FacetSet::iterator it = facets.begin(); it != facets.end(); ++it)
 	{
-		ccFacet* facet = *it;
+		ccFacet*      facet = *it;
 		FacetMetaData data;
 		GetFacetMetaData(facet, data);
-		//horizontal and vertical extensions
+		// horizontal and vertical extensions
 		double horizExt = 0;
-		double vertExt = 0;
+		double vertExt  = 0;
 		ComputeFacetExtensions(data.normal, facet->getContour(), horizExt, vertExt);
 
 		outStream << data.facetIndex << ";";
@@ -1142,7 +1140,7 @@ void qFacets::exportFacetsInfo()
 		outStream << data.rms << ";";
 		outStream << horizExt << ";";
 		outStream << vertExt << ";";
-		outStream << horizExt*vertExt << ";";
+		outStream << horizExt * vertExt << ";";
 		outStream << data.surface << ";";
 		outStream << data.dipDir_deg << ";";
 		outStream << data.dip_deg << ";";

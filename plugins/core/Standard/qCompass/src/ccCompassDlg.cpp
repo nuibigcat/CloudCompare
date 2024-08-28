@@ -1,56 +1,67 @@
-//##########################################################################
-//#                                                                        #
-//#                    CLOUDCOMPARE PLUGIN: ccCompass                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 of the License.               #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                     COPYRIGHT: Sam Thiele  2017                        #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                    CLOUDCOMPARE PLUGIN: ccCompass                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 of the License.               #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                     COPYRIGHT: Sam Thiele  2017                        #
+// #                                                                        #
+// ##########################################################################
 
 #include "ccCompassDlg.h"
 
-//qCC_db
+// qCC_db
 #include <ccLog.h>
 
-//Qt
+// Qt
+#include <QApplication>
 #include <QEvent>
 #include <QKeyEvent>
-#include <QApplication>
-#include <qmenu.h>
 #include <qaction.h>
+#include <qmenu.h>
 
-//system
+// system
 #include <assert.h>
 
-ccCompassDlg::ccCompassDlg(QWidget* parent/*=nullptr*/)
-	: ccOverlayDialog(parent)
-	, Ui::compassDlg()
+ccCompassDlg::ccCompassDlg(QWidget* parent /*=nullptr*/)
+    : ccOverlayDialog(parent)
+    , Ui::compassDlg()
 {
 	setupUi(this);
 
-	//setup "algorithm" dropdown
+	// setup "algorithm" dropdown
 	m_cost_algorithm_menu = new QMenu(this);
 	m_cost_algorithm_menu->setTitle("Algorithm");
-	m_dark = new QAction("Darkness", this); m_dark->setCheckable(true); m_dark->setChecked(true);
-	m_light = new QAction("Lightness", this); m_light->setCheckable(true);
-	m_rgb = new QAction("RGB similarity", this); m_rgb->setCheckable(true);
-	m_grad = new QAction("RGB gradient", this); m_grad->setCheckable(true); //m_grad->setEnabled(true);
-	m_curve = new QAction("Curvature", this); m_curve->setCheckable(true); //m_curve->setEnabled(false);
-	m_dist = new QAction("Distance", this); m_dist->setCheckable(true);
-	m_scalar = new QAction("Scalar field", this); m_scalar->setCheckable(true);
-	m_scalar_inv = new QAction("Inverse scalar field", this); m_scalar_inv->setCheckable(true);
-	m_recalculate = new QAction("Recalculate selection", this); //used to recalculate selected traces with new cost function
-	m_plane_fit = new QAction("Fit planes", this); m_plane_fit->setCheckable(true); m_plane_fit->setChecked(true);
+	m_dark = new QAction("Darkness", this);
+	m_dark->setCheckable(true);
+	m_dark->setChecked(true);
+	m_light = new QAction("Lightness", this);
+	m_light->setCheckable(true);
+	m_rgb = new QAction("RGB similarity", this);
+	m_rgb->setCheckable(true);
+	m_grad = new QAction("RGB gradient", this);
+	m_grad->setCheckable(true); // m_grad->setEnabled(true);
+	m_curve = new QAction("Curvature", this);
+	m_curve->setCheckable(true); // m_curve->setEnabled(false);
+	m_dist = new QAction("Distance", this);
+	m_dist->setCheckable(true);
+	m_scalar = new QAction("Scalar field", this);
+	m_scalar->setCheckable(true);
+	m_scalar_inv = new QAction("Inverse scalar field", this);
+	m_scalar_inv->setCheckable(true);
+	m_recalculate = new QAction("Recalculate selection", this); // used to recalculate selected traces with new cost function
+	m_plane_fit   = new QAction("Fit planes", this);
+	m_plane_fit->setCheckable(true);
+	m_plane_fit->setChecked(true);
 
-	//setup tool-tips
+	// setup tool-tips
 	m_dark->setToolTip("Traces follow 'dark' points. Good for shadowed fracture traces.");
 	m_light->setToolTip("Traces follow 'light' points. Good for thin quartz veins etc.");
 	m_rgb->setToolTip("Traces follow points that have a similar color to the start and end points. Useful if structures being traced have a distinct color.");
@@ -61,7 +72,7 @@ ccCompassDlg::ccCompassDlg(QWidget* parent/*=nullptr*/)
 	m_scalar_inv->setToolTip("Use the inverse of the active scalar field to define path cost (i.e. the path follows high scalar values).");
 	m_recalculate->setToolTip("Recalculate the selected traces using the latest cost function");
 
-	//add to menu
+	// add to menu
 	m_cost_algorithm_menu->addAction(m_dark);
 	m_cost_algorithm_menu->addAction(m_light);
 	m_cost_algorithm_menu->addAction(m_rgb);
@@ -73,7 +84,7 @@ ccCompassDlg::ccCompassDlg(QWidget* parent/*=nullptr*/)
 	m_cost_algorithm_menu->addSeparator();
 	m_cost_algorithm_menu->addAction(m_recalculate);
 
-	//add callbacks
+	// add callbacks
 	connect(m_dark, &QAction::triggered, this, &ccCompassDlg::setDarkCost);
 	connect(m_light, &QAction::triggered, this, &ccCompassDlg::setLightCost);
 	connect(m_rgb, &QAction::triggered, this, &ccCompassDlg::setRGBCost);
@@ -83,12 +94,20 @@ ccCompassDlg::ccCompassDlg(QWidget* parent/*=nullptr*/)
 	connect(m_scalar, &QAction::triggered, this, &ccCompassDlg::setScalarCost);
 	connect(m_scalar_inv, &QAction::triggered, this, &ccCompassDlg::setInvScalarCost);
 
-	//setup settings menu
+	// setup settings menu
 	m_settings_menu = new QMenu(this);
-	m_plane_fit = new QAction("Fit planes", this); m_plane_fit->setCheckable(true); m_plane_fit->setChecked(false);
-	m_showStippled = new QAction("Show stippled", this); m_showStippled->setCheckable(true); m_showStippled->setChecked(true);
-	m_showNormals = new QAction("Show normals", this); m_showNormals->setCheckable(true); m_showNormals->setChecked(true);
-	m_showNames = new QAction("Show names", this); m_showNames->setCheckable(true); m_showNames->setChecked(false);
+	m_plane_fit     = new QAction("Fit planes", this);
+	m_plane_fit->setCheckable(true);
+	m_plane_fit->setChecked(false);
+	m_showStippled = new QAction("Show stippled", this);
+	m_showStippled->setCheckable(true);
+	m_showStippled->setChecked(true);
+	m_showNormals = new QAction("Show normals", this);
+	m_showNormals->setCheckable(true);
+	m_showNormals->setChecked(true);
+	m_showNames = new QAction("Show names", this);
+	m_showNames->setCheckable(true);
+	m_showNames->setChecked(false);
 
 	m_plane_fit->setToolTip("If checked, a plane will automatically be fitted to traces matching the criteria defined in the ccCompass description.");
 	m_showStippled->setToolTip("If checked, planes will be drawn partially transparent (stippled).");
@@ -101,29 +120,32 @@ ccCompassDlg::ccCompassDlg(QWidget* parent/*=nullptr*/)
 	m_settings_menu->addAction(m_showNames);
 	m_settings_menu->addSeparator();
 	m_settings_menu->addMenu(m_cost_algorithm_menu);
-	
+
 	algorithmButton->setPopupMode(QToolButton::InstantPopup);
-	algorithmButton->setMenu(m_settings_menu); //add settings menu
+	algorithmButton->setMenu(m_settings_menu); // add settings menu
 	algorithmButton->setEnabled(true);
-	
-	//setup pair picking menu
+
+	// setup pair picking menu
 	m_pairpicking_menu = new QMenu(this);
-	m_research_menu = new QMenu(this);
+	m_research_menu    = new QMenu(this);
 	m_research_menu->setTitle("Research");
 
-	m_loadFoliations = new QAction("Import foliations...", this);
-	m_loadLineations = new QAction("Import lineations...", this);
-	m_toSVG = new QAction("Export SVG...", this);
-	m_noteTool = new QAction("Add note", this);
-	m_pinchTool = new QAction("Add pinch nodes", this);
-	m_measure_thickness = new QAction("Measure one-point thickness", this);
+	m_loadFoliations             = new QAction("Import foliations...", this);
+	m_loadLineations             = new QAction("Import lineations...", this);
+	m_toSVG                      = new QAction("Export SVG...", this);
+	m_noteTool                   = new QAction("Add note", this);
+	m_pinchTool                  = new QAction("Add pinch nodes", this);
+	m_measure_thickness          = new QAction("Measure one-point thickness", this);
 	m_measure_thickness_twoPoint = new QAction("Measure two-point thickness", this);
-	m_youngerThan = new QAction("Assign \"Younger-Than\" relationship", this); m_youngerThan->setEnabled(false); //todo
-	m_follows = new QAction("Assign \"Follows\" relationship", this); m_follows->setEnabled(false);
-	m_equivalent = new QAction("Assign \"Equivalent\" relationship", this); m_equivalent->setEnabled(false);
+	m_youngerThan                = new QAction("Assign \"Younger-Than\" relationship", this);
+	m_youngerThan->setEnabled(false); // todo
+	m_follows = new QAction("Assign \"Follows\" relationship", this);
+	m_follows->setEnabled(false);
+	m_equivalent = new QAction("Assign \"Equivalent\" relationship", this);
+	m_equivalent->setEnabled(false);
 	m_fitPlaneToGeoObject = new QAction("Fit plane to GeoObject", this);
-	m_mergeSelected = new QAction("Merge selected GeoObjects", this);
-	m_estimateNormals = new QAction("Estimate structure normals", this);
+	m_mergeSelected       = new QAction("Merge selected GeoObjects", this);
+	m_estimateNormals     = new QAction("Estimate structure normals", this);
 
 	m_pinchTool->setToolTip("Add Pinch Node objects to record features such as dyke tips or sedimentary units that pinch-out.");
 	m_loadFoliations->setToolTip("Converts a point cloud containing points (measurement location) and dip/dip-direction scalar fields to planes.");
@@ -138,17 +160,16 @@ ccCompassDlg::ccCompassDlg(QWidget* parent/*=nullptr*/)
 	m_fitPlaneToGeoObject->setToolTip("Calculates best fit planes for the entire upper/lower surfaces of the GeoObject.");
 	m_mergeSelected->setToolTip("Merge all selected GeoObjects into a single GeoObject.");
 	m_estimateNormals->setToolTip("Estimate trace structure normals with maximum a-postiori plane fitting algorithm.");
-	
 
 	m_pairpicking_menu->addAction(m_pinchTool);
 	m_pairpicking_menu->addAction(m_measure_thickness);
 	m_pairpicking_menu->addAction(m_measure_thickness_twoPoint);
 	m_pairpicking_menu->addAction(m_noteTool);
 	m_pairpicking_menu->addSeparator();
-	//m_pairpicking_menu->addAction(m_youngerThan); //TODO - reenable these once topology code has been fixed
-	//m_pairpicking_menu->addAction(m_follows);
-	//m_pairpicking_menu->addAction(m_equivalent);
-	//m_pairpicking_menu->addSeparator();
+	// m_pairpicking_menu->addAction(m_youngerThan); //TODO - reenable these once topology code has been fixed
+	// m_pairpicking_menu->addAction(m_follows);
+	// m_pairpicking_menu->addAction(m_equivalent);
+	// m_pairpicking_menu->addSeparator();
 	m_pairpicking_menu->addAction(m_fitPlaneToGeoObject);
 	m_pairpicking_menu->addAction(m_mergeSelected);
 	m_pairpicking_menu->addAction(m_estimateNormals);
@@ -158,14 +179,13 @@ ccCompassDlg::ccCompassDlg(QWidget* parent/*=nullptr*/)
 	m_pairpicking_menu->addAction(m_toSVG);
 	m_pairpicking_menu->addSeparator();
 	m_pairpicking_menu->addMenu(m_research_menu);
-	
-	
-	//Add tools to research menu
+
+	// Add tools to research menu
 	m_recalculateFitPlanes = new QAction("Recalculate fit-planes", this);
-	m_toPointCloud = new QAction("Convert to point cloud", this);
-	m_distributeSelection = new QAction("Distribute to GeoObjects", this);
-	m_estimateP21 = new QAction("Estimate P21 intensity", this);
-	m_estimateStrain = new QAction("Estimate strain", this);
+	m_toPointCloud         = new QAction("Convert to point cloud", this);
+	m_distributeSelection  = new QAction("Distribute to GeoObjects", this);
+	m_estimateP21          = new QAction("Estimate P21 intensity", this);
+	m_estimateStrain       = new QAction("Estimate strain", this);
 
 	m_recalculateFitPlanes->setToolTip("Recalculates all fit-planes deriving from traces and GeoObjects (but not those calculated with the Plane Tool).");
 	m_toPointCloud->setToolTip("Converts the selected GeoObject(s) or individual traces to a point cloud (typically for proximity analysis).");
@@ -178,21 +198,21 @@ ccCompassDlg::ccCompassDlg(QWidget* parent/*=nullptr*/)
 	m_research_menu->addAction(m_estimateStrain);
 	m_research_menu->addAction(m_distributeSelection);
 	m_research_menu->addAction(m_toPointCloud);
-	
+
 	extraModeButton->setPopupMode(QToolButton::InstantPopup);
 	extraModeButton->setMenu(m_pairpicking_menu);
 
-	//set background color
+	// set background color
 	QPalette p;
 	p.setColor(backgroundRole(), QColor(240, 240, 240, 200));
 	setPalette(p);
 	setAutoFillBackground(true);
 
-	//add shortcuts
-	addOverriddenShortcut(Qt::Key_Escape); //escape key for the "cancel" button
-	addOverriddenShortcut(Qt::Key_Return); //return key for the "apply" button
-	addOverriddenShortcut(Qt::Key_Space); //space key also hits the "apply" button (easier for some)
-	
+	// add shortcuts
+	addOverriddenShortcut(Qt::Key_Escape); // escape key for the "cancel" button
+	addOverriddenShortcut(Qt::Key_Return); // return key for the "apply" button
+	addOverriddenShortcut(Qt::Key_Space);  // space key also hits the "apply" button (easier for some)
+
 	connect(this, &ccOverlayDialog::shortcutTriggered, this, &ccCompassDlg::onShortcutTriggered);
 }
 
@@ -216,8 +236,8 @@ int ccCompassDlg::getCostMode()
 	if (m_scalar_inv->isChecked())
 		out = out | ccTrace::MODE::INV_SCALAR;
 
-	if (out == 0) 
-		return ccTrace::MODE::DISTANCE; //default to distance if everything has been unchecked
+	if (out == 0)
+		return ccTrace::MODE::DISTANCE; // default to distance if everything has been unchecked
 
 	return out;
 }
@@ -241,7 +261,7 @@ void ccCompassDlg::onShortcutTriggered(int key)
 		closeButton->click();
 		return;
 	default:
-		//nothing to do
+		// nothing to do
 		break;
 	}
 }

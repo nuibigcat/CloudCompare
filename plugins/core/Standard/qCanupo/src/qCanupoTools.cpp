@@ -1,63 +1,62 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
 #include "qCanupoTools.h"
 
-//Local
+// Local
 #include "trainer.h"
 
-//CCCoreLib
+// CCCoreLib
 #include <DistanceComputationTools.h>
 #include <Neighbourhood.h>
 #include <ParallelSort.h>
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 #include <ccProgressDialog.h>
 #include <ccScalarField.h>
 
-//qCC_plugins
+// qCC_plugins
 #include <ccMainAppInterface.h>
 #include <ccQtHelpers.h>
 
-//Qt
+// Qt
 #include <QApplication>
 #include <QComboBox>
 #include <QMainWindow>
 #include <QtConcurrentMap>
 
-//ComputeCorePointsDescriptors parameters
+// ComputeCorePointsDescriptors parameters
 static struct
 {
 	CCCoreLib::GenericIndexedCloud* corePoints;
-	ccGenericPointCloud* sourceCloud;
-	CCCoreLib::DgmOctree* octree;
-	unsigned char octreeLevel;
-	CorePointDescSet* descriptors;
-	bool invalidDescriptors;
+	ccGenericPointCloud*            sourceCloud;
+	CCCoreLib::DgmOctree*           octree;
+	unsigned char                   octreeLevel;
+	CorePointDescSet*               descriptors;
+	bool                            invalidDescriptors;
 
 	CCCoreLib::NormalizedProgress* nProgress;
-	bool processCanceled;
-	bool errorOccurred;
+	bool                           processCanceled;
+	bool                           errorOccurred;
 
-	ScaleParamsComputer* computer; //the per-scale parameters computer 
+	ScaleParamsComputer* computer; // the per-scale parameters computer
 
-	std::vector<ccScalarField*>* roughnessSFs; //for test
-
+	std::vector<ccScalarField*>* roughnessSFs; // for test
 
 } s_computeCorePointsDescParams;
 
@@ -67,39 +66,39 @@ void ComputeCorePointDescriptor(unsigned index)
 	if (s_computeCorePointsDescParams.processCanceled)
 		return;
 
-	const CCVector3* P = s_computeCorePointsDescParams.corePoints->getPoint(index);
+	const CCVector3*                    P = s_computeCorePointsDescParams.corePoints->getPoint(index);
 	CCCoreLib::DgmOctree::NeighboursSet neighbours;
 
-	//extract the neighbors (maximum radius)
+	// extract the neighbors (maximum radius)
 	float maxRadius = s_computeCorePointsDescParams.descriptors->scales().front() / 2;
-	int n = s_computeCorePointsDescParams.octree->getPointsInSphericalNeighbourhood(*P,
-																				maxRadius,
-																				neighbours,
-																				s_computeCorePointsDescParams.octreeLevel);
+	int   n         = s_computeCorePointsDescParams.octree->getPointsInSphericalNeighbourhood(*P,
+                                                                                    maxRadius,
+                                                                                    neighbours,
+                                                                                    s_computeCorePointsDescParams.octreeLevel);
 
 	if (n != 0)
 	{
 		size_t scaleCount = s_computeCorePointsDescParams.descriptors->scales().size();
 
-		//get reference on corresponding descriptor
+		// get reference on corresponding descriptor
 		assert(s_computeCorePointsDescParams.descriptors->size() > index);
 		CorePointDesc& desc = s_computeCorePointsDescParams.descriptors->at(index);
 
 		unsigned dimPerScale = s_computeCorePointsDescParams.descriptors->dimPerScale();
 		assert(desc.params.size() == scaleCount * dimPerScale);
 
-		//init the whole neighborhood subset (we will prune it each time)
+		// init the whole neighborhood subset (we will prune it each time)
 		CCCoreLib::ReferenceCloud subset(s_computeCorePointsDescParams.sourceCloud);
 		{
 			if (!subset.reserve(n))
 			{
-				//not enough memory!
-				s_computeCorePointsDescParams.errorOccurred = true;
-				s_computeCorePointsDescParams.processCanceled = true; //to make the loop stop!
+				// not enough memory!
+				s_computeCorePointsDescParams.errorOccurred   = true;
+				s_computeCorePointsDescParams.processCanceled = true; // to make the loop stop!
 				return;
 			}
 
-			//sort the neighbors by increasing distance
+			// sort the neighbors by increasing distance
 			ParallelSort(neighbours.begin(), neighbours.end(), CCCoreLib::DgmOctree::PointDescriptor::distComp);
 
 			for (int j = 0; j < n; ++j)
@@ -112,13 +111,13 @@ void ComputeCorePointDescriptor(unsigned index)
 
 		for (size_t i = 0; i < scaleCount; ++i)
 		{
-			const double radius = s_computeCorePointsDescParams.descriptors->scales()[i] / 2; //we start from the biggest
+			const double radius = s_computeCorePointsDescParams.descriptors->scales()[i] / 2; // we start from the biggest
 
 			if (i != 0)
 			{
-				//trim the points that don't fall in the current neighborhood
-				double squareRadius = radius * radius;
-				CCCoreLib::DgmOctree::PointDescriptor fakeDesc(nullptr, 0, squareRadius);
+				// trim the points that don't fall in the current neighborhood
+				double                                        squareRadius = radius * radius;
+				CCCoreLib::DgmOctree::PointDescriptor         fakeDesc(nullptr, 0, squareRadius);
 				CCCoreLib::DgmOctree::NeighboursSet::iterator up = std::upper_bound(neighbours.begin(), neighbours.end(), fakeDesc, CCCoreLib::DgmOctree::PointDescriptor::distComp);
 				if (up != neighbours.end())
 				{
@@ -129,33 +128,33 @@ void ComputeCorePointDescriptor(unsigned index)
 				}
 			}
 
-			//optional: compute per-level roughness
+			// optional: compute per-level roughness
 			if (s_computeCorePointsDescParams.roughnessSFs)
 			{
 				ScalarType roughness = CCCoreLib::NAN_VALUE;
 
 				if (subset.size() >= 3)
 				{
-					//to compute we take the nearest point to the query point as 'central' point
-					//warning: it should work in most of the cases, apart if the core points have nothing to do
-					//with the global cloud!!!
+					// to compute we take the nearest point to the query point as 'central' point
+					// warning: it should work in most of the cases, apart if the core points have nothing to do
+					// with the global cloud!!!
 					unsigned lastIndex = subset.size() - 1;
 					subset.swap(0, lastIndex);
 
-					//temporarily remove the central point (now at the end)
+					// temporarily remove the central point (now at the end)
 					unsigned globalIndex = subset.getPointGlobalIndex(lastIndex);
 					subset.resize(lastIndex);
 
-					CCCoreLib::Neighbourhood Z(&subset);
+					CCCoreLib::Neighbourhood   Z(&subset);
 					const PointCoordinateType* lsPlane = Z.getLSPlane();
 					if (lsPlane)
 					{
-						//distance to the LS plane fitted on the nearest neighbors
+						// distance to the LS plane fitted on the nearest neighbors
 						const CCVector3* centralPoint = s_computeCorePointsDescParams.sourceCloud->getPoint(globalIndex);
-						roughness = std::abs(CCCoreLib::DistanceComputationTools::computePoint2PlaneDistance(centralPoint, lsPlane));
+						roughness                     = std::abs(CCCoreLib::DistanceComputationTools::computePoint2PlaneDistance(centralPoint, lsPlane));
 					}
 
-					//put back the point at its original place!
+					// put back the point at its original place!
 					subset.addPointIndex(globalIndex);
 					subset.swap(0, lastIndex);
 				}
@@ -167,53 +166,53 @@ void ComputeCorePointDescriptor(unsigned index)
 			}
 
 			bool invalidScale = false;
-			s_computeCorePointsDescParams.computer->computeScaleParams(subset, radius, &(desc.params[i*dimPerScale]), invalidScale);
+			s_computeCorePointsDescParams.computer->computeScaleParams(subset, radius, &(desc.params[i * dimPerScale]), invalidScale);
 
 			if (invalidScale)
 			{
 				s_computeCorePointsDescParams.invalidDescriptors = true;
-				//no need to compute the remaining scales!
+				// no need to compute the remaining scales!
 				for (size_t j = i + 1; j < scaleCount; ++j)
 				{
-					//copy the same parameters for all scales (see CANUPO paper)
-					memcpy(&(desc.params[j*dimPerScale]), &(desc.params[i*dimPerScale]), sizeof(float)*dimPerScale);
+					// copy the same parameters for all scales (see CANUPO paper)
+					memcpy(&(desc.params[j * dimPerScale]), &(desc.params[i * dimPerScale]), sizeof(float) * dimPerScale);
 				}
-				//neighbours.clear();
-				//subset.clear(true);
+				// neighbours.clear();
+				// subset.clear(true);
 				break;
 			}
 		}
 	}
 	else
 	{
-		//if the widest neighborhood has less than 3 points, we can't compute a valid descriptor!
+		// if the widest neighborhood has less than 3 points, we can't compute a valid descriptor!
 		s_computeCorePointsDescParams.invalidDescriptors = true;
 	}
-	
-	//progress notification
+
+	// progress notification
 	if (s_computeCorePointsDescParams.nProgress && !s_computeCorePointsDescParams.nProgress->oneStep())
 	{
 		s_computeCorePointsDescParams.processCanceled = true;
 	}
 }
 
-bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* corePoints,
-												CorePointDescSet& corePointsDescriptors,
-												ccGenericPointCloud* sourceCloud,
-												const std::vector<float>& sortedScales,
-												bool& invalidDescriptors,
-												QString& error, //if any
-												unsigned descriptorID/*=DESC_DIMENSIONALITY*/,
-												int maxThreadCount/*=0*/,
-												CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
-												CCCoreLib::DgmOctree* inputOctree/*=nullptr*/,
-												std::vector<ccScalarField*>* roughnessSFs/*=nullptr*/)
+bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud*     corePoints,
+                                                CorePointDescSet&                   corePointsDescriptors,
+                                                ccGenericPointCloud*                sourceCloud,
+                                                const std::vector<float>&           sortedScales,
+                                                bool&                               invalidDescriptors,
+                                                QString&                            error, // if any
+                                                unsigned                            descriptorID /*=DESC_DIMENSIONALITY*/,
+                                                int                                 maxThreadCount /*=0*/,
+                                                CCCoreLib::GenericProgressCallback* progressCb /*=nullptr*/,
+                                                CCCoreLib::DgmOctree*               inputOctree /*=nullptr*/,
+                                                std::vector<ccScalarField*>*        roughnessSFs /*=nullptr*/)
 {
 	assert(corePoints && sourceCloud);
 	assert(!sortedScales.empty());
 
 	invalidDescriptors = true;
-	error = QString();
+	error              = QString();
 
 	unsigned corePtsCount = corePoints->size();
 	if (corePtsCount == 0)
@@ -228,7 +227,7 @@ bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* 
 		return false;
 	}
 
-	//descriptor (computer)
+	// descriptor (computer)
 	s_computeCorePointsDescParams.computer = ScaleParamsComputer::GetByID(descriptorID);
 	if (!s_computeCorePointsDescParams.computer)
 	{
@@ -268,7 +267,7 @@ bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* 
 		QApplication::processEvents();
 	}
 
-	//reserve memory for descriptors storage
+	// reserve memory for descriptors storage
 	bool success = true;
 	try
 	{
@@ -280,7 +279,7 @@ bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* 
 	}
 
 	if (success)
-		success = corePointsDescriptors.setScales(sortedScales); //automatically resizes the 'params' structure for each core point
+		success = corePointsDescriptors.setScales(sortedScales); // automatically resizes the 'params' structure for each core point
 	if (!success)
 	{
 		error = "Not enough memory to compute core points!";
@@ -289,21 +288,21 @@ bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* 
 		return false;
 	}
 
-	PointCoordinateType biggestRadius = sortedScales.front() / 2; //we extract the biggest neighborhood
-	unsigned char octreeLevel = theOctree->findBestLevelForAGivenNeighbourhoodSizeExtraction(biggestRadius);
+	PointCoordinateType biggestRadius = sortedScales.front() / 2; // we extract the biggest neighborhood
+	unsigned char       octreeLevel   = theOctree->findBestLevelForAGivenNeighbourhoodSizeExtraction(biggestRadius);
 
-	s_computeCorePointsDescParams.corePoints = corePoints;
-	s_computeCorePointsDescParams.descriptors = &corePointsDescriptors;
-	s_computeCorePointsDescParams.sourceCloud = sourceCloud;
-	s_computeCorePointsDescParams.octree = theOctree;
-	s_computeCorePointsDescParams.octreeLevel = octreeLevel;
-	s_computeCorePointsDescParams.nProgress = progressCb ? &nProgress : nullptr;
-	s_computeCorePointsDescParams.processCanceled = false;
-	s_computeCorePointsDescParams.errorOccurred = false;
+	s_computeCorePointsDescParams.corePoints         = corePoints;
+	s_computeCorePointsDescParams.descriptors        = &corePointsDescriptors;
+	s_computeCorePointsDescParams.sourceCloud        = sourceCloud;
+	s_computeCorePointsDescParams.octree             = theOctree;
+	s_computeCorePointsDescParams.octreeLevel        = octreeLevel;
+	s_computeCorePointsDescParams.nProgress          = progressCb ? &nProgress : nullptr;
+	s_computeCorePointsDescParams.processCanceled    = false;
+	s_computeCorePointsDescParams.errorOccurred      = false;
 	s_computeCorePointsDescParams.invalidDescriptors = false;
-	s_computeCorePointsDescParams.roughnessSFs = roughnessSFs;
+	s_computeCorePointsDescParams.roughnessSFs       = roughnessSFs;
 
-	//we try the parallel way (if we have enough memory)
+	// we try the parallel way (if we have enough memory)
 	bool useParallelStrategy = true;
 #ifdef _DEBUG
 	useParallelStrategy = false;
@@ -318,7 +317,7 @@ bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* 
 		}
 		catch (const std::bad_alloc&)
 		{
-			//not enough memory
+			// not enough memory
 			useParallelStrategy = false;
 		}
 	}
@@ -340,15 +339,15 @@ bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* 
 	}
 	else
 	{
-		//manually call the static per-point method!
+		// manually call the static per-point method!
 		for (unsigned i = 0; i < corePtsCount; ++i)
 		{
 			ComputeCorePointDescriptor(i);
 		}
 	}
 
-	//output flags
-	bool wasCanceled = s_computeCorePointsDescParams.processCanceled;
+	// output flags
+	bool wasCanceled   = s_computeCorePointsDescParams.processCanceled;
 	bool errorOccurred = s_computeCorePointsDescParams.errorOccurred;
 	if (errorOccurred)
 		error = "An error occurred during descriptors computation!";
@@ -356,17 +355,17 @@ bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* 
 		error = "Process has been cancelled by the user";
 	invalidDescriptors = s_computeCorePointsDescParams.invalidDescriptors;
 
-	//reset static parameters (just to be clean ;)
-	s_computeCorePointsDescParams.corePoints = nullptr;
-	s_computeCorePointsDescParams.descriptors = nullptr;
-	s_computeCorePointsDescParams.sourceCloud = nullptr;
-	s_computeCorePointsDescParams.octree = nullptr;
-	s_computeCorePointsDescParams.octreeLevel = 0;
-	s_computeCorePointsDescParams.nProgress = nullptr;
-	s_computeCorePointsDescParams.processCanceled = false;
-	s_computeCorePointsDescParams.errorOccurred = false;
+	// reset static parameters (just to be clean ;)
+	s_computeCorePointsDescParams.corePoints         = nullptr;
+	s_computeCorePointsDescParams.descriptors        = nullptr;
+	s_computeCorePointsDescParams.sourceCloud        = nullptr;
+	s_computeCorePointsDescParams.octree             = nullptr;
+	s_computeCorePointsDescParams.octreeLevel        = 0;
+	s_computeCorePointsDescParams.nProgress          = nullptr;
+	s_computeCorePointsDescParams.processCanceled    = false;
+	s_computeCorePointsDescParams.errorOccurred      = false;
 	s_computeCorePointsDescParams.invalidDescriptors = false;
-	s_computeCorePointsDescParams.computer = nullptr;
+	s_computeCorePointsDescParams.computer           = nullptr;
 
 	if (progressCb)
 	{
@@ -381,7 +380,7 @@ bool qCanupoTools::ComputeCorePointsDescriptors(CCCoreLib::GenericIndexedCloud* 
 
 bool qCanupoTools::CompareVectors(const std::vector<float>& first, const std::vector<float>& second)
 {
-	//check scales
+	// check scales
 	size_t firstCount = first.size();
 	if (firstCount != second.size())
 		return false;
@@ -395,8 +394,8 @@ bool qCanupoTools::CompareVectors(const std::vector<float>& first, const std::ve
 
 size_t qCanupoTools::TestVectorsOverlap(const std::vector<float>& first, const std::vector<float>& second)
 {
-	size_t size1 = first.size();
-	size_t size2 = second.size();
+	size_t size1    = first.size();
+	size_t size2    = second.size();
 	size_t minCount = std::min(size1, size2);
 
 	size_t i = 0;
@@ -432,15 +431,15 @@ ccPointCloud* qCanupoTools::GetCloudFromCombo(QComboBox* comboBox, ccHObject* db
 		return nullptr;
 	}
 
-	//return the cloud currently selected in the combox box
+	// return the cloud currently selected in the combox box
 	int index = comboBox->currentIndex();
 	if (index < 0)
 	{
 		assert(false);
 		return nullptr;
 	}
-	unsigned uniqueID = comboBox->itemData(index).toUInt();
-	ccHObject* item = dbRoot->find(uniqueID);
+	unsigned   uniqueID = comboBox->itemData(index).toUInt();
+	ccHObject* item     = dbRoot->find(uniqueID);
 	if (!item || !item->isA(CC_TYPES::POINT_CLOUD))
 	{
 		assert(false);
@@ -449,25 +448,25 @@ ccPointCloud* qCanupoTools::GetCloudFromCombo(QComboBox* comboBox, ccHObject* db
 	return static_cast<ccPointCloud*>(item);
 }
 
-bool qCanupoTools::EvaluateClassifier(const Classifier& classifier,
-	const CorePointDescSet& descriptors1,
-	const CorePointDescSet& descriptors2,
-	const std::vector<float>& scales,
-	EvalParameters& params)
+bool qCanupoTools::EvaluateClassifier(const Classifier&         classifier,
+                                      const CorePointDescSet&   descriptors1,
+                                      const CorePointDescSet&   descriptors2,
+                                      const std::vector<float>& scales,
+                                      EvalParameters&           params)
 {
 	params = EvalParameters();
 
 	if (descriptors1.empty() || descriptors2.empty())
 	{
-		//empty descriptors?
+		// empty descriptors?
 		return false;
 	}
 
-	//Evaluate on 1st class
+	// Evaluate on 1st class
 	{
 		size_t nsamples1 = descriptors1.size();
-		double sumd = 0;
-		double sumd2 = 0;
+		double sumd      = 0;
+		double sumd2     = 0;
 		for (size_t i = 0; i < nsamples1; ++i)
 		{
 			float d = classifier.classify(descriptors1[i]);
@@ -477,17 +476,17 @@ bool qCanupoTools::EvaluateClassifier(const Classifier& classifier,
 				params.true1++;
 
 			sumd += d;
-			sumd2 += static_cast<double>(d)*d;
+			sumd2 += static_cast<double>(d) * d;
 		}
-		params.mu1 = sumd / nsamples1;
-		params.var1 = sumd2 / nsamples1 - params.mu1*params.mu1;
+		params.mu1  = sumd / nsamples1;
+		params.var1 = sumd2 / nsamples1 - params.mu1 * params.mu1;
 	}
 
-	//Evaluate on 2nd class
+	// Evaluate on 2nd class
 	{
 		size_t nsamples2 = descriptors2.size();
-		double sumd = 0;
-		double sumd2 = 0;
+		double sumd      = 0;
+		double sumd2     = 0;
 		for (size_t i = 0; i < nsamples2; ++i)
 		{
 			float d = classifier.classify(descriptors2[i]);
@@ -497,24 +496,24 @@ bool qCanupoTools::EvaluateClassifier(const Classifier& classifier,
 				params.true2++;
 
 			sumd += d;
-			sumd2 += static_cast<double>(d)*d;
+			sumd2 += static_cast<double>(d) * d;
 		}
-		params.mu2 = sumd / nsamples2;
-		params.var2 = sumd2 / nsamples2 - params.mu2*params.mu2;
+		params.mu2  = sumd / nsamples2;
+		params.var2 = sumd2 / nsamples2 - params.mu2 * params.mu2;
 	}
 
 	return true;
 }
 
-bool qCanupoTools::TrainClassifier(	Classifier& classifier,
-									const CorePointDescSet& descriptors1,
-									const CorePointDescSet& descriptors2,
-									const std::vector<float>& scales,
-									ccPointCloud* mscCloud,
-									const CorePointDescSet* evaluationDescriptors/*=nullptr*/,
-									ccMainAppInterface* app/*=nullptr*/)
+bool qCanupoTools::TrainClassifier(Classifier&               classifier,
+                                   const CorePointDescSet&   descriptors1,
+                                   const CorePointDescSet&   descriptors2,
+                                   const std::vector<float>& scales,
+                                   ccPointCloud*             mscCloud,
+                                   const CorePointDescSet*   evaluationDescriptors /*=nullptr*/,
+                                   ccMainAppInterface*       app /*=nullptr*/)
 {
-	//fuse both descriptor sets in a single 'dlib' structure
+	// fuse both descriptor sets in a single 'dlib' structure
 	size_t nsamples1 = descriptors1.size();
 	size_t nsamples2 = descriptors2.size();
 
@@ -532,29 +531,29 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 	assert(dimPerScale == descriptors2.dimPerScale());
 	classifier.dimPerScale = dimPerScale;
 
-	//we use the specified 'scales' (not necessarily all descriptors will be used!)
+	// we use the specified 'scales' (not necessarily all descriptors will be used!)
 	assert((descriptors1.front().params.size() % dimPerScale) == 0);
 	size_t paramsCount = descriptors1.front().params.size() / dimPerScale;
-	size_t scaleCount = scales.size();
+	size_t scaleCount  = scales.size();
 	assert(scaleCount <= paramsCount);
 	scaleCount = std::min(scaleCount, paramsCount);
 
 	classifier.scales = scales;
-	//already set outside!
-	//classifier.class1 = 1;
-	//classifier.class2 = 2;
+	// already set outside!
+	// classifier.class1 = 1;
+	// classifier.class2 = 2;
 
 	size_t nsamples = nsamples1 + nsamples2;
-	size_t fdim = scaleCount * dimPerScale;
+	size_t fdim     = scaleCount * dimPerScale;
 
 	std::vector<LDATrainer::sample_type> samples;
-	std::vector<float> labels;
+	std::vector<float>                   labels;
 	try
 	{
 		LDATrainer::sample_type nanSample;
 		nanSample.set_size(fdim, 1);
 		samples.resize(nsamples, nanSample);
-		labels.resize(nsamples, 1); //labels for class#1 will be changed to -1 (see below)
+		labels.resize(nsamples, 1); // labels for class#1 will be changed to -1 (see below)
 	}
 	catch (const std::bad_alloc&)
 	{
@@ -563,42 +562,42 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 		return false;
 	}
 
-	//add class #1 data
+	// add class #1 data
 	{
 		for (size_t i = 0; i < nsamples1; ++i)
 		{
-			const CorePointDesc& desc = descriptors1[i];
+			const CorePointDesc&     desc   = descriptors1[i];
 			LDATrainer::sample_type& sample = samples[i];
-			//assert(scaleCount <= paramsCount); //already tested above
-			size_t shift = (paramsCount - scaleCount)*dimPerScale; //if we use less scales than parameters
+			// assert(scaleCount <= paramsCount); //already tested above
+			size_t shift = (paramsCount - scaleCount) * dimPerScale; // if we use less scales than parameters
 			for (size_t j = 0; j < fdim; ++j)
 			{
 				sample(j) = desc.params[shift + j];
 			}
-			//class #1 is labelled with '-1'
+			// class #1 is labelled with '-1'
 			labels[i] = -1;
 		}
 	}
-	//add class #2 data
+	// add class #2 data
 	{
 		for (size_t i = 0; i < nsamples2; ++i)
 		{
-			const CorePointDesc& desc = descriptors2[i];
+			const CorePointDesc&     desc   = descriptors2[i];
 			LDATrainer::sample_type& sample = samples[nsamples1 + i];
-			//assert(scaleCount <= paramsCount); //already tested above
-			size_t shift = (paramsCount - scaleCount)*dimPerScale; //if we use less scales than parameters
+			// assert(scaleCount <= paramsCount); //already tested above
+			size_t shift = (paramsCount - scaleCount) * dimPerScale; // if we use less scales than parameters
 			for (size_t j = 0; j < fdim; ++j)
 			{
 				sample(j) = desc.params[shift + j];
 			}
-			//class #2 is labelled with '1' (already done above)
-			//labels[nsamples1+i] = 1;
+			// class #2 is labelled with '1' (already done above)
+			// labels[nsamples1+i] = 1;
 		}
 	}
 
-	//Computing the two best projection directions
+	// Computing the two best projection directions
 	QMainWindow* parentWindow = (app ? app->getMainWindow() : nullptr);
-	LDATrainer trainer;
+	LDATrainer   trainer;
 	{
 		QProgressDialog tempProgressDlg("LDA (step #1) in progress... please wait...", QString(), 0, 0, parentWindow);
 		tempProgressDlg.show();
@@ -646,8 +645,8 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 			return false;
 		}
 
-		//std::pair<std::vector<float>::const_iterator, std::vector<float>::const_iterator> mm = std::minmax_element(proj1.begin(),proj1.end());
-		//m_app->dispToConsole(QString("Min/max(proj1) = (%1 , %2)").arg(*mm.first).arg(*mm.second));
+		// std::pair<std::vector<float>::const_iterator, std::vector<float>::const_iterator> mm = std::minmax_element(proj1.begin(),proj1.end());
+		// m_app->dispToConsole(QString("Min/max(proj1) = (%1 , %2)").arg(*mm.first).arg(*mm.second));
 	}
 
 	dlib::matrix<LDATrainer::sample_type, 0, 1> basis;
@@ -670,7 +669,7 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 
 	GramSchmidt(basis, w_vect);
 
-	//Determining orthogonal direction
+	// Determining orthogonal direction
 	std::vector<LDATrainer::sample_type> samples_reduced;
 	{
 		try
@@ -758,19 +757,19 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 			return false;
 		}
 
-		//std::pair<std::vector<float>::const_iterator, std::vector<float>::const_iterator> mm = std::minmax_element(proj2.begin(),proj2.end());
-		//m_app->dispToConsole(QString("Min/max(proj2) = (%1 , %2)").arg(*mm.first).arg(*mm.second));
+		// std::pair<std::vector<float>::const_iterator, std::vector<float>::const_iterator> mm = std::minmax_element(proj2.begin(),proj2.end());
+		// m_app->dispToConsole(QString("Min/max(proj2) = (%1 , %2)").arg(*mm.first).arg(*mm.second));
 	}
 
 	// compute the reference points for orienting the classifier boundaries
 	// pathological cases are possible where an arbitrary point in the (>0,>0)
 	// quadrant is not in the +1 class for example
 	// here, just use the mean of the classes
-	ComputeReferencePoints(	classifier.refPointPos,
-							classifier.refPointNeg,
-							proj1,
-							proj2,
-							labels);
+	ComputeReferencePoints(classifier.refPointPos,
+	                       classifier.refPointNeg,
+	                       proj1,
+	                       proj2,
+	                       labels);
 
 	classifier.weightsAxis1 = trainer.m_weights;
 	classifier.weightsAxis2 = orthoTrainer.m_weights;
@@ -779,21 +778,21 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 	{
 		// Same as Brodu's code:
 		// Experimental: dilatation to highlight the internal data structure
-		if (!DilateClassifier(	classifier,
-								proj1,
-								proj2,
-								labels,
-								samples,
-								trainer,
-								orthoTrainer))
+		if (!DilateClassifier(classifier,
+		                      proj1,
+		                      proj2,
+		                      labels,
+		                      samples,
+		                      trainer,
+		                      orthoTrainer))
 		{
 			if (app)
-				app->dispToConsole("Not enough memory to 'dilate' the classifier!",ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				app->dispToConsole("Not enough memory to 'dilate' the classifier!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			return false;
 		}
 	}
 
-	//proceed to boundary evaluation
+	// proceed to boundary evaluation
 	{
 		Classifier::Point2D boundaryCenter(0, 0);
 		Classifier::Point2D boundaryDir(0, 1);
@@ -805,7 +804,7 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 				app->dispToConsole("[Internal error] Invalid output MSC cloud!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			return false;
 		}
-		//if we have no 'evaluation' cloud, we'll add it to the sum of the two input clouds
+		// if we have no 'evaluation' cloud, we'll add it to the sum of the two input clouds
 		size_t cloudSize = nsamples;
 		if (evaluationDescriptors)
 			cloudSize += evaluationDescriptors->size();
@@ -828,29 +827,29 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 			mscCloud->showColors(true);
 		}
 
-		//generate the cloud of (colored) MSC "points"
+		// generate the cloud of (colored) MSC "points"
 		for (size_t i = 0; i < cloudSize; ++i)
 		{
 			LDATrainer::sample_type sample;
 			sample.set_size(fdim);
 
 			const CorePointDesc* desc = nullptr;
-			const ccColor::Rgb* col = &ccColor::lightGreyRGB;
+			const ccColor::Rgb*  col  = &ccColor::lightGreyRGB;
 
 			if (i < nsamples1)
 			{
 				desc = &descriptors1[i];
-				col = &ccColor::blueRGB;
+				col  = &ccColor::blueRGB;
 			}
 			else if (i < nsamples)
 			{
 				desc = &descriptors2[i - nsamples1];
-				col = &ccColor::redRGB;
+				col  = &ccColor::redRGB;
 			}
 			else if (evaluationDescriptors)
 			{
 				desc = &evaluationDescriptors->at(i - nsamples);
-				//col = &ccColor::lightGreyRGB;
+				// col = &ccColor::lightGreyRGB;
 			}
 			else
 			{
@@ -859,7 +858,7 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 			}
 
 			assert(desc && col);
-			size_t shift = (paramsCount - scaleCount) * dimPerScale; //if we use less scales than parameters
+			size_t shift = (paramsCount - scaleCount) * dimPerScale; // if we use less scales than parameters
 			for (size_t j = 0; j < fdim; ++j)
 			{
 				sample(j) = desc->params[shift + j];
@@ -867,16 +866,16 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 
 			double x = trainer.predict(sample);
 			double y = orthoTrainer.predict(sample);
-			mscCloud->addPoint( CCVector3(	static_cast<float>(x),
-											static_cast<float>(y),
-											0) );
+			mscCloud->addPoint(CCVector3(static_cast<float>(x),
+			                             static_cast<float>(y),
+			                             0));
 			if (hasColors && col)
 			{
 				mscCloud->addColor(*col);
 			}
 		}
 
-//DGM: we only use the evaluation cloud for representation now!
+// DGM: we only use the evaluation cloud for representation now!
 #if 0
 		if (evaluationDescriptors)
 		{
@@ -971,22 +970,22 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 		else
 #endif
 		{
-			//evaluate the boundary simply with the two input "class" clouds
+			// evaluate the boundary simply with the two input "class" clouds
 			Classifier::Point2D c1(0, 0);
 			Classifier::Point2D c2(0, 0);
-			unsigned n1 = 0;
-			unsigned n2 = 0;
+			unsigned            n1 = 0;
+			unsigned            n2 = 0;
 			ComputeReferencePoints(c2, c1, proj1, proj2, labels, &n2, &n1);
 
 			Classifier::Point2D w_vect = c2 - c1;
 			w_vect.normalize();
 			Classifier::Point2D w_orth(-w_vect.y, w_vect.x);
 
-			double cba2_max = 0;
-			const int c_searchSteps = 180;
+			double                     cba2_max      = 0;
+			const int                  c_searchSteps = 180;
 			CosSinTable<c_searchSteps> tableCosSin;
 
-			//progress notification
+			// progress notification
 			ccProgressDialog pDlg(false, parentWindow);
 			pDlg.setWindowTitle("Determining boundary line");
 			pDlg.setRange(0, c_searchSteps);
@@ -995,17 +994,19 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 			for (int sd = 1; sd < c_searchSteps; ++sd)
 			{
 				Classifier::Point2D v(tableCosSin.cosines[sd],
-					tableCosSin.sines[sd]);
+				                      tableCosSin.sines[sd]);
 
 				dlib::matrix<double, 2, 2> basis;
-				Classifier::Point2D base_vec1 = w_vect;
-				Classifier::Point2D base_vec2 = w_vect * v.x + w_orth * v.y;
-				basis(0, 0) = base_vec1.x; basis(0, 1) = base_vec2.x;
-				basis(1, 0) = base_vec1.y; basis(1, 1) = base_vec2.y;
-				basis = inv(basis);
+				Classifier::Point2D        base_vec1 = w_vect;
+				Classifier::Point2D        base_vec2 = w_vect * v.x + w_orth * v.y;
+				basis(0, 0)                          = base_vec1.x;
+				basis(0, 1)                          = base_vec2.x;
+				basis(1, 0)                          = base_vec1.y;
+				basis(1, 1)                          = base_vec2.y;
+				basis                                = inv(basis);
 
-				double m1 = 0;
-				double m2 = 0;
+				double              m1 = 0;
+				double              m2 = 0;
 				std::vector<double> p1;
 				std::vector<double> p2;
 				p1.reserve(n1);
@@ -1013,9 +1014,9 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 				for (size_t i = 0; i < nsamples; ++i)
 				{
 					dlib::matrix<double, 2, 1> P;
-					P(0) = proj1[i];
-					P(1) = proj2[i];
-					P = basis * P;
+					P(0)            = proj1[i];
+					P(1)            = proj2[i];
+					P               = basis * P;
 					const double& d = P(0); // projection on w_vect along the slanted direction
 					if (labels[i] < 0)
 					{
@@ -1049,8 +1050,8 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 					size_t idx1 = std::lower_bound(p1.begin(), p1.end(), pos) - p1.begin();
 					size_t idx2 = std::lower_bound(p2.begin(), p2.end(), pos) - p2.begin();
 
-					double pr1 = idx1 / static_cast<double>(n1);
-					double pr2 = 1.0 - idx2 / static_cast<double>(n2);
+					double pr1  = idx1 / static_cast<double>(n1);
+					double pr2  = 1.0 - idx2 / static_cast<double>(n2);
 					double cba2 = std::abs(pr1 + pr2);
 					if (cba2 > cba2_max)
 					{
@@ -1059,8 +1060,8 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 						if (reversed)
 							r = 1.0 - r;
 						Classifier::Point2D center = c1 + (c2 - c1) * static_cast<float>(r);
-						boundaryCenter = center;
-						boundaryDir = base_vec2;
+						boundaryCenter             = center;
+						boundaryDir                = base_vec2;
 					}
 				}
 
@@ -1070,12 +1071,12 @@ bool qCanupoTools::TrainClassifier(	Classifier& classifier,
 			pDlg.close();
 		}
 
-		//update classifier info (boundary)
+		// update classifier info (boundary)
 		{
-		PointCoordinateType l = mscCloud->getOwnBB().getDiagVec().y / 2;
-		classifier.path.resize(2);
-		classifier.path[0] = boundaryCenter + boundaryDir * l;
-		classifier.path[1] = boundaryCenter - boundaryDir * l;
+			PointCoordinateType l = mscCloud->getOwnBB().getDiagVec().y / 2;
+			classifier.path.resize(2);
+			classifier.path[0] = boundaryCenter + boundaryDir * l;
+			classifier.path[1] = boundaryCenter - boundaryDir * l;
 		}
 	}
 

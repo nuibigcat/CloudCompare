@@ -1,29 +1,29 @@
-//##########################################################################
-//#                                                                        #
-//#                              CLOUDCOMPARE                              #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                              CLOUDCOMPARE                              #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
+// #                                                                        #
+// ##########################################################################
 
 #include "ccScalarField.h"
 
-//Local
+// Local
 #include "ccColorScalesManager.h"
 
-//CCCoreLib
+// CCCoreLib
 #include <CCConst.h>
 
-//system
+// system
 #include <algorithm>
 
 using namespace CCCoreLib;
@@ -31,47 +31,47 @@ using namespace CCCoreLib;
 //! Default number of classes for associated histogram
 const unsigned MAX_HISTOGRAM_SIZE = 512;
 
-ccScalarField::ccScalarField(const char* name/*=nullptr*/)
-	: ScalarField(name)
-	, m_showNaNValuesInGrey(true)
-	, m_symmetricalScale(false)
-	, m_logScale(false)
-	, m_alwaysShowZero(false)
-	, m_colorScale(nullptr)
-	, m_colorRampSteps(0)
-	, m_modified(true)
-	, m_globalShift(0)
+ccScalarField::ccScalarField(const char* name /*=nullptr*/)
+    : ScalarField(name)
+    , m_showNaNValuesInGrey(true)
+    , m_symmetricalScale(false)
+    , m_logScale(false)
+    , m_alwaysShowZero(false)
+    , m_colorScale(nullptr)
+    , m_colorRampSteps(0)
+    , m_modified(true)
+    , m_globalShift(0)
 {
 	setColorRampSteps(ccColorScale::DEFAULT_STEPS);
 	setColorScale(ccColorScalesManager::GetUniqueInstance()->getDefaultScale(ccColorScalesManager::BGYR));
 }
 
 ccScalarField::ccScalarField(const ccScalarField& sf)
-	: ScalarField(sf)
-	, m_displayRange(sf.m_displayRange)
-	, m_saturationRange(sf.m_saturationRange)
-	, m_logSaturationRange(sf.m_logSaturationRange)
-	, m_showNaNValuesInGrey(sf.m_showNaNValuesInGrey)
-	, m_symmetricalScale(sf.m_symmetricalScale)
-	, m_logScale(sf.m_logScale)
-	, m_alwaysShowZero(sf.m_alwaysShowZero)
-	, m_colorScale(sf.m_colorScale)
-	, m_colorRampSteps(sf.m_colorRampSteps)
-	, m_histogram(sf.m_histogram)
-	, m_modified(sf.m_modified)
-	, m_globalShift(sf.m_globalShift)
+    : ScalarField(sf)
+    , m_displayRange(sf.m_displayRange)
+    , m_saturationRange(sf.m_saturationRange)
+    , m_logSaturationRange(sf.m_logSaturationRange)
+    , m_showNaNValuesInGrey(sf.m_showNaNValuesInGrey)
+    , m_symmetricalScale(sf.m_symmetricalScale)
+    , m_logScale(sf.m_logScale)
+    , m_alwaysShowZero(sf.m_alwaysShowZero)
+    , m_colorScale(sf.m_colorScale)
+    , m_colorRampSteps(sf.m_colorRampSteps)
+    , m_histogram(sf.m_histogram)
+    , m_modified(sf.m_modified)
+    , m_globalShift(sf.m_globalShift)
 {
 	computeMinAndMax();
 }
 
 ScalarType ccScalarField::normalize(ScalarType d) const
 {
-	if (/*!ValidValue(d) || */!m_displayRange.isInRange(d)) //NaN values are also rejected by 'isInRange'!
+	if (/*!ValidValue(d) || */ !m_displayRange.isInRange(d)) // NaN values are also rejected by 'isInRange'!
 	{
 		return static_cast<ScalarType>(-1);
 	}
 
-	//most probable path first!
+	// most probable path first!
 	if (!m_logScale)
 	{
 		if (!m_symmetricalScale)
@@ -82,11 +82,11 @@ ScalarType ccScalarField::normalize(ScalarType d) const
 				return static_cast<ScalarType>(1);
 			return (d - m_saturationRange.start()) / m_saturationRange.range();
 		}
-		else //symmetric scale
+		else // symmetric scale
 		{
 			if (std::abs(d) <= m_saturationRange.start())
 				return static_cast<ScalarType>(0.5);
-			
+
 			if (d >= 0)
 			{
 				if (d >= m_saturationRange.stop())
@@ -101,7 +101,7 @@ ScalarType ccScalarField::normalize(ScalarType d) const
 			}
 		}
 	}
-	else //log scale
+	else // log scale
 	{
 		ScalarType dLog = log10(std::max(static_cast<ScalarType>(std::abs(d)), CCCoreLib::ZERO_TOLERANCE_SCALAR));
 		if (dLog <= m_logSaturationRange.start())
@@ -111,7 +111,7 @@ ScalarType ccScalarField::normalize(ScalarType d) const
 		return (dLog - m_logSaturationRange.start()) / m_logSaturationRange.range();
 	}
 
-	//can't get here normally!
+	// can't get here normally!
 	assert(false);
 	return static_cast<ScalarType>(-1);
 }
@@ -121,7 +121,7 @@ void ccScalarField::setColorScale(ccColorScale::Shared scale)
 	if (m_colorScale != scale)
 	{
 		bool wasAbsolute = (m_colorScale && !m_colorScale->isRelative());
-		bool isAbsolute = (scale && !scale->isRelative());
+		bool isAbsolute  = (scale && !scale->isRelative());
 
 		m_colorScale = scale;
 
@@ -166,22 +166,22 @@ void ccScalarField::computeMinAndMax()
 
 	m_displayRange.setBounds(getMin(), getMax());
 
-	//update histogram
+	// update histogram
 	{
 		if (m_displayRange.maxRange() == 0 || currentSize() == 0)
 		{
-			//can't build histogram of a flat field
+			// can't build histogram of a flat field
 			m_histogram.clear();
 		}
 		else
 		{
-			unsigned count = currentSize();
+			unsigned count           = currentSize();
 			unsigned numberOfClasses = static_cast<unsigned>(ceil(sqrt(static_cast<double>(count))));
-			numberOfClasses = std::max<unsigned>(std::min<unsigned>(numberOfClasses, MAX_HISTOGRAM_SIZE), 4);
+			numberOfClasses          = std::max<unsigned>(std::min<unsigned>(numberOfClasses, MAX_HISTOGRAM_SIZE), 4);
 
 			m_histogram.maxValue = 0;
 
-			//reserve memory
+			// reserve memory
 			try
 			{
 				m_histogram.resize(numberOfClasses);
@@ -196,7 +196,7 @@ void ccScalarField::computeMinAndMax()
 			{
 				std::fill(m_histogram.begin(), m_histogram.end(), 0);
 
-				//compute histogram
+				// compute histogram
 				{
 					ScalarType step = static_cast<ScalarType>(numberOfClasses) / m_displayRange.maxRange();
 					for (unsigned i = 0; i < count; ++i)
@@ -205,13 +205,13 @@ void ccScalarField::computeMinAndMax()
 
 						if (ValidValue(val))
 						{
-							unsigned bin = static_cast<unsigned>((val - m_displayRange.min())*step);
+							unsigned bin = static_cast<unsigned>((val - m_displayRange.min()) * step);
 							++m_histogram[std::min(bin, numberOfClasses - 1)];
 						}
 					}
 				}
 
-				//update 'maxValue'
+				// update 'maxValue'
 				m_histogram.maxValue = *std::max_element(m_histogram.begin(), m_histogram.end());
 			}
 		}
@@ -224,40 +224,40 @@ void ccScalarField::computeMinAndMax()
 
 void ccScalarField::updateSaturationBounds()
 {
-	if (!m_colorScale || m_colorScale->isRelative()) //Relative scale (default)
+	if (!m_colorScale || m_colorScale->isRelative()) // Relative scale (default)
 	{
 		ScalarType minAbsVal = (getMax() < 0 ? std::min(-getMax(), -getMin()) : std::max<ScalarType>(getMin(), 0));
 		ScalarType maxAbsVal = std::max(std::abs(getMin()), std::abs(getMax()));
 
 		if (m_symmetricalScale)
 		{
-			m_saturationRange.setBounds(minAbsVal,maxAbsVal);
+			m_saturationRange.setBounds(minAbsVal, maxAbsVal);
 		}
 		else
 		{
-			m_saturationRange.setBounds(getMin(),getMax());
+			m_saturationRange.setBounds(getMin(), getMax());
 		}
 
-		//log scale (we always update it even if m_logScale is not enabled!)
-		//if (m_logScale)
+		// log scale (we always update it even if m_logScale is not enabled!)
+		// if (m_logScale)
 		{
 			ScalarType minSatLog = log10(std::max(minAbsVal, CCCoreLib::ZERO_TOLERANCE_SCALAR));
 			ScalarType maxSatLog = log10(std::max(maxAbsVal, CCCoreLib::ZERO_TOLERANCE_SCALAR));
 			m_logSaturationRange.setBounds(minSatLog, maxSatLog);
 		}
 	}
-	else //absolute scale
+	else // absolute scale
 	{
-		//DGM: same formulas as for the 'relative scale' case but we use the boundaries
-		//defined by the scale itself instead of the current SF boundaries...
+		// DGM: same formulas as for the 'relative scale' case but we use the boundaries
+		// defined by the scale itself instead of the current SF boundaries...
 		double minVal = 0;
 		double maxVal = 0;
 		m_colorScale->getAbsoluteBoundaries(minVal, maxVal);
 
 		m_saturationRange.setBounds(static_cast<ScalarType>(minVal), static_cast<ScalarType>(maxVal));
 
-		//log scale (we always update it even if m_logScale is not enabled!)
-		//if (m_logScale)
+		// log scale (we always update it even if m_logScale is not enabled!)
+		// if (m_logScale)
 		{
 			ScalarType minAbsVal = static_cast<ScalarType>(maxVal < 0 ? std::min(-maxVal, -minVal) : std::max(minVal, 0.0));
 			ScalarType maxAbsVal = static_cast<ScalarType>(std::max(std::abs(minVal), std::abs(maxVal)));
@@ -275,7 +275,7 @@ void ccScalarField::setMinDisplayed(ScalarType val)
 	m_displayRange.setStart(val);
 	m_modified = true;
 }
-	
+
 void ccScalarField::setMaxDisplayed(ScalarType val)
 {
 	m_displayRange.setStop(val);
@@ -286,7 +286,7 @@ void ccScalarField::setSaturationStart(ScalarType val)
 {
 	if (m_logScale)
 	{
-		m_logSaturationRange.setStart(val/*log10(std::max(val, static_cast<ScalarType>(ZERO_TOLERANCE_F)))*/);
+		m_logSaturationRange.setStart(val /*log10(std::max(val, static_cast<ScalarType>(ZERO_TOLERANCE_F)))*/);
 	}
 	else
 	{
@@ -299,7 +299,7 @@ void ccScalarField::setSaturationStop(ScalarType val)
 {
 	if (m_logScale)
 	{
-		m_logSaturationRange.setStop(val/*log10(std::max(val, static_cast<ScalarType>(ZERO_TOLERANCE_F)))*/);
+		m_logSaturationRange.setStop(val /*log10(std::max(val, static_cast<ScalarType>(ZERO_TOLERANCE_F)))*/);
 	}
 	else
 	{
@@ -329,15 +329,15 @@ bool ccScalarField::toFile(QFile& out, short dataVersion) const
 		return false;
 	}
 
-	//name (dataVersion>=20)
+	// name (dataVersion>=20)
 	if (out.write(m_name, 256) < 0)
 		return WriteError();
 
-	//data (dataVersion>=20)
+	// data (dataVersion>=20)
 	if (!ccSerializationHelper::GenericArrayToFile<ScalarType, 1, ScalarType>(*this, out))
 		return WriteError();
 
-	//displayed values & saturation boundaries (dataVersion>=20)
+	// displayed values & saturation boundaries (dataVersion>=20)
 	double dValue = (double)m_displayRange.start();
 	if (out.write((const char*)&dValue, sizeof(double)) < 0)
 		return WriteError();
@@ -373,7 +373,7 @@ bool ccScalarField::toFile(QFile& out, short dataVersion) const
 	if (out.write((const char*)&m_alwaysShowZero, sizeof(bool)) < 0)
 		return WriteError();
 
-	//color scale (dataVersion>=27)
+	// color scale (dataVersion>=27)
 	{
 		bool hasColorScale = (m_colorScale != nullptr);
 		if (out.write((const char*)&hasColorScale, sizeof(bool)) < 0)
@@ -384,14 +384,14 @@ bool ccScalarField::toFile(QFile& out, short dataVersion) const
 				return WriteError();
 	}
 
-	//color ramp steps (dataVersion>=20)
+	// color ramp steps (dataVersion>=20)
 	uint32_t colorRampSteps = (uint32_t)m_colorRampSteps;
 	if (out.write((const char*)&colorRampSteps, 4) < 0)
 		return WriteError();
 
 	if (dataVersion >= 42)
 	{
-		//global shift (dataVersion>=42)
+		// global shift (dataVersion>=42)
 		if (out.write((const char*)&m_globalShift, sizeof(double)) < 0)
 			return WriteError();
 	}
@@ -407,7 +407,7 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 		return CorruptError();
 	}
 
-	//name (dataVersion >= 20)
+	// name (dataVersion >= 20)
 	if (in.read(m_name, 256) < 0)
 		return ReadError();
 
@@ -419,15 +419,15 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 			return ReadError();
 	}
 
-	//data (dataVersion >= 20)
+	// data (dataVersion >= 20)
 	bool result = false;
 	{
 		bool fileScalarIsFloat = (flags & ccSerializableObject::DF_SCALAR_VAL_32_BITS);
-		if (fileScalarIsFloat && sizeof(ScalarType) == 8) //file is 'float' and current type is 'double'
+		if (fileScalarIsFloat && sizeof(ScalarType) == 8) // file is 'float' and current type is 'double'
 		{
 			result = ccSerializationHelper::GenericArrayFromTypedFile<ScalarType, 1, ScalarType, float>(*this, in, dataVersion);
 		}
-		else if (!fileScalarIsFloat && sizeof(ScalarType) == 4) //file is 'double' and current type is 'float'
+		else if (!fileScalarIsFloat && sizeof(ScalarType) == 4) // file is 'double' and current type is 'float'
 		{
 			result = ccSerializationHelper::GenericArrayFromTypedFile<ScalarType, 1, ScalarType, double>(*this, in, dataVersion);
 		}
@@ -441,15 +441,15 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 		return false;
 	}
 
-	//convert former 'hidden/NaN' values for non strictly positive SFs (dataVersion < 26)
+	// convert former 'hidden/NaN' values for non strictly positive SFs (dataVersion < 26)
 	if (dataVersion < 26)
 	{
 		const ScalarType FORMER_BIG_VALUE = static_cast<ScalarType>(sqrt(3.4e38f) - 1.0f);
 
 		for (unsigned i = 0; i < currentSize(); ++i)
 		{
-			ScalarType &val = getValue(i);
-			//convert former 'HIDDEN_VALUE' and 'BIG_VALUE' to 'NAN_VALUE'
+			ScalarType& val = getValue(i);
+			// convert former 'HIDDEN_VALUE' and 'BIG_VALUE' to 'NAN_VALUE'
 			if ((onlyPositiveValues && val < 0) || (!onlyPositiveValues && val >= FORMER_BIG_VALUE))
 			{
 				val = CCCoreLib::NAN_VALUE;
@@ -457,7 +457,7 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 		}
 	}
 
-	//displayed values & saturation boundaries (dataVersion>=20)
+	// displayed values & saturation boundaries (dataVersion>=20)
 	double minDisplayed = 0;
 	if (in.read((char*)&minDisplayed, sizeof(double)) < 0)
 		return ReadError();
@@ -483,7 +483,7 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 		bool absSaturation = false;
 		if (in.read((char*)&absSaturation, sizeof(bool)) < 0)
 			return ReadError();
-		//quite equivalent to 'symmetrical mode' now...
+		// quite equivalent to 'symmetrical mode' now...
 		m_symmetricalScale = absSaturation;
 	}
 
@@ -501,7 +501,7 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 		{
 			return ReadError();
 		}
-		//warn the user that this option is deprecated
+		// warn the user that this option is deprecated
 		if (!autoBoundaries)
 		{
 			ccLog::Warning("[ccScalarField] Former 'released' boundaries are deprecated!");
@@ -509,7 +509,7 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 		}
 	}
 
-	//new attributes
+	// new attributes
 	if (dataVersion >= 27)
 	{
 		//'symmetrical scale' state (27<=dataVersion)
@@ -525,7 +525,7 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 			return ReadError();
 	}
 
-	//color scale
+	// color scale
 	{
 		ccColorScalesManager* colorScalesManager = ccColorScalesManager::GetUniqueInstance();
 		if (!colorScalesManager)
@@ -534,14 +534,14 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 			assert(false);
 		}
 
-		//old versions
+		// old versions
 		if (dataVersion < 27)
 		{
 			uint32_t activeColorScale = 0;
 			if (in.read((char*)&activeColorScale, 4) < 0)
 				return ReadError();
 
-			//Retrieve equivalent default scale
+			// Retrieve equivalent default scale
 			ccColorScalesManager::DEFAULT_SCALES activeColorScaleType = ccColorScalesManager::BGYR;
 			switch (activeColorScale)
 			{
@@ -586,20 +586,20 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 					{
 						colorScalesManager->addScale(colorScale);
 					}
-					else //same UUID?
+					else // same UUID?
 					{
-						//FIXME: we should look if the color scale is exactly the same!
+						// FIXME: we should look if the color scale is exactly the same!
 						m_colorScale = existingColorScale;
 					}
 				}
 			}
 		}
 
-		//A scalar field must have a color scale!
+		// A scalar field must have a color scale!
 		if (!m_colorScale)
 			m_colorScale = ccColorScalesManager::GetDefaultScale();
 
-		//color ramp steps (dataVersion>=20)
+		// color ramp steps (dataVersion>=20)
 		uint32_t colorRampSteps = 0;
 		if (in.read((char*)&colorRampSteps, 4) < 0)
 			return ReadError();
@@ -608,12 +608,12 @@ bool ccScalarField::fromFile(QFile& in, short dataVersion, int flags, LoadedIDMa
 
 	if (dataVersion >= 42)
 	{
-		//global shift (dataVersion>=42)
+		// global shift (dataVersion>=42)
 		if (in.read((char*)&m_globalShift, sizeof(double)) < 0)
 			return ReadError();
 	}
 
-	//update values
+	// update values
 	computeMinAndMax();
 	m_displayRange.setStart((ScalarType)minDisplayed);
 	m_displayRange.setStop((ScalarType)maxDisplayed);
@@ -642,10 +642,9 @@ short ccScalarField::minimumFileVersion() const
 
 bool ccScalarField::mayHaveHiddenValues() const
 {
-	bool hiddenPoints = (		!areNaNValuesShownInGrey()
-						&&	(	m_displayRange.stop()	<= m_displayRange.max()
-							||	m_displayRange.start()	>= m_displayRange.min() )
-						);
+	bool hiddenPoints = (!areNaNValuesShownInGrey()
+	                     && (m_displayRange.stop() <= m_displayRange.max()
+	                         || m_displayRange.start() >= m_displayRange.min()));
 
 	return hiddenPoints;
 }
@@ -653,13 +652,13 @@ bool ccScalarField::mayHaveHiddenValues() const
 void ccScalarField::showNaNValuesInGrey(bool state)
 {
 	m_showNaNValuesInGrey = state;
-	m_modified = true;
+	m_modified            = true;
 }
 
 void ccScalarField::alwaysShowZero(bool state)
 {
 	m_alwaysShowZero = state;
-	m_modified = true;
+	m_modified       = true;
 }
 
 void ccScalarField::importParametersFrom(const ccScalarField* sf)

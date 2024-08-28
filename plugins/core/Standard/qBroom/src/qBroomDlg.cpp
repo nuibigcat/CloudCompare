@@ -1,67 +1,67 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qBroom                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: Wesley Grimes (Collision Engineering Associates)       #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qBroom                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: Wesley Grimes (Collision Engineering Associates)       #
+// #                                                                        #
+// ##########################################################################
 
 #include "qBroomDlg.h"
+
 #include <ccMainAppInterface.h>
 
-//qCC_db
-#include <ccPointCloud.h>
-#include <ccPolyline.h>
+// qCC_db
+#include <cc2DLabel.h>
+#include <ccAdvancedTypes.h>
+#include <ccBox.h>
 #include <ccOctree.h>
 #include <ccOctreeProxy.h>
-#include <ccBox.h>
-#include <cc2DLabel.h>
+#include <ccPlane.h>
+#include <ccPointCloud.h>
+#include <ccPolyline.h>
 #include <ccProgressDialog.h>
 #include <ccScalarField.h>
-#include <ccAdvancedTypes.h>
-#include <ccPlane.h>
-#include <ccPolyline.h>
 
-//qCC_fbo
-#include <ccGlFilter.h>
+// qCC_fbo
 #include <ccGLWindowInterface.h>
+#include <ccGlFilter.h>
 
-//CCCoreLib
+// CCCoreLib
 #include <DgmOctreeReferenceCloud.h>
 #include <Neighbourhood.h>
 
-//Qt
-#include <QMessageBox>
-#include <QMainWindow>
-#include <QSettings>
+// Qt
 #include <QCloseEvent>
+#include <QMainWindow>
+#include <QMessageBox>
+#include <QSettings>
 
-//intersection between a plane (the broom plane) and a line (represented by two points)
+// intersection between a plane (the broom plane) and a line (represented by two points)
 static bool Intersection(const ccGLMatrix& broomTrans, const CCVector3& A, const CCVector3& B, CCVector3& I)
 {
-	//plane normal and center
+	// plane normal and center
 	CCVector3 N = broomTrans.getColumnAsVec3D(2);
 	CCVector3 O = broomTrans.getTranslationAsVec3D();
 
-	CCVector3 AB = B - A;
-	CCVector3 OA = A - O;
+	CCVector3           AB     = B - A;
+	CCVector3           OA     = A - O;
 	PointCoordinateType ABdotN = AB.dot(N);
 	PointCoordinateType OAdotN = OA.dot(N);
 	if (std::abs(ABdotN) < std::numeric_limits<PointCoordinateType>::epsilon())
 	{
-		//the plane and the line are parallel!
+		// the plane and the line are parallel!
 		if (std::abs(OAdotN) < std::numeric_limits<PointCoordinateType>::epsilon())
 		{
-			//the line lies totally in the plane
+			// the line lies totally in the plane
 			I = O;
 			return true;
 		}
@@ -71,50 +71,49 @@ static bool Intersection(const ccGLMatrix& broomTrans, const CCVector3& A, const
 		}
 	}
 
-	PointCoordinateType s = - OAdotN / ABdotN;
-	I = A + s * AB;
+	PointCoordinateType s = -OAdotN / ABdotN;
+	I                     = A + s * AB;
 
 	return true;
-
 }
 
-qBroomDlg::qBroomDlg(ccMainAppInterface* app/*=nullptr*/)
-	: QDialog(app ? app->getMainWindow() : nullptr, Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint)
-	, Ui::BroomDialog()
-	, m_glWindow(nullptr)
-	, m_broomBox(new ccBox("Broom"))
-	, m_selectionBox(new ccBox("Selection"))
-	, m_boxes(new ccHObject("Boxes"))
-	, m_lastMousePos(0,0)
-	, m_lastMousePos3D(0,0,0)
-	, m_hasLastMousePos3D(false)
-	, m_broomSelected(false)
-	, m_selectionMode(ABOVE)
-	, m_app(app)
-	, m_initialCloud(nullptr)
+qBroomDlg::qBroomDlg(ccMainAppInterface* app /*=nullptr*/)
+    : QDialog(app ? app->getMainWindow() : nullptr, Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint)
+    , Ui::BroomDialog()
+    , m_glWindow(nullptr)
+    , m_broomBox(new ccBox("Broom"))
+    , m_selectionBox(new ccBox("Selection"))
+    , m_boxes(new ccHObject("Boxes"))
+    , m_lastMousePos(0, 0)
+    , m_lastMousePos3D(0, 0, 0)
+    , m_hasLastMousePos3D(false)
+    , m_broomSelected(false)
+    , m_selectionMode(ABOVE)
+    , m_app(app)
+    , m_initialCloud(nullptr)
 {
 	setupUi(this);
 
 	lostTrackFrame->setVisible(false);
 
-	//load persistent settings
+	// load persistent settings
 	int selectionMode = selectionModeComboBox->currentIndex();
 	{
 		QSettings settings;
 		settings.beginGroup("qBroom");
-		selectionMode = settings.value("selectionMode", selectionMode).toInt();
-		bool stickToTheFloor = settings.value("stickToTheFloor", stickCheckBox->isChecked()).toBool();
+		selectionMode          = settings.value("selectionMode", selectionMode).toInt();
+		bool stickToTheFloor   = settings.value("stickToTheFloor", stickCheckBox->isChecked()).toBool();
 		bool animateAutomation = settings.value("animatedAutomation", animateAutomationCheckBox->isChecked()).toBool();
 
 		stickCheckBox->setChecked(stickToTheFloor);
 		animateAutomationCheckBox->setChecked(animateAutomation);
 	}
 
-	//force update
+	// force update
 	selectionModeComboBox->setCurrentIndex(selectionMode);
 	onSelectionModeChanged(selectionMode);
 
-	//create 3D view
+	// create 3D view
 	{
 		QWidget* glWidget = nullptr;
 		m_app->createGLWindow(m_glWindow, glWidget);
@@ -124,27 +123,27 @@ qBroomDlg::qBroomDlg(ccMainAppInterface* app/*=nullptr*/)
 		m_glWindow->displayOverlayEntities(true, true);
 		m_glWindow->setInteractionMode(ccGLWindowInterface::MODE_TRANSFORM_CAMERA);
 		m_glWindow->setPickingMode(ccGLWindowInterface::NO_PICKING);
-		
-		//add window to the input frame (if any)
+
+		// add window to the input frame (if any)
 		viewFrame->setLayout(new QHBoxLayout());
 		viewFrame->layout()->addWidget(glWidget);
 	}
 
-	//items
+	// items
 	{
 		m_broomBox->setEnabled(true);
 		m_broomBox->setDisplay(m_glWindow);
 
 		m_selectionBox->setEnabled(true);
 		m_selectionBox->setDisplay(m_glWindow);
-		
+
 		m_boxes->setEnabled(false);
 		m_boxes->addChild(m_broomBox);
 		m_boxes->addChild(m_selectionBox);
 		m_glWindow->addToOwnDB(m_boxes);
 	}
 
-	//connect signals/slots
+	// connect signals/slots
 	{
 		connect(m_glWindow->signalEmitter(), &ccGLWindowSignalEmitter::itemPicked, this, &qBroomDlg::handlePickedItem);
 
@@ -152,28 +151,34 @@ qBroomDlg::qBroomDlg(ccMainAppInterface* app/*=nullptr*/)
 		connect(m_glWindow->signalEmitter(), &ccGLWindowSignalEmitter::mouseMoved, this, &qBroomDlg::onMouseMoved);
 		connect(m_glWindow->signalEmitter(), &ccGLWindowSignalEmitter::buttonReleased, this, &qBroomDlg::onButtonReleased);
 
-		connect(cleanHeightDoubleSpinBox,    qOverload<double>(&QDoubleSpinBox::valueChanged), this, &qBroomDlg::onCleanHeightChanged);
-		connect(broomLengthDoubleSpinBox,    qOverload<double>(&QDoubleSpinBox::valueChanged), this, &qBroomDlg::onDimensionChanged);
-		connect(broomWidthDoubleSpinBox,     qOverload<double>(&QDoubleSpinBox::valueChanged), this, &qBroomDlg::onDimensionChanged);
+		connect(cleanHeightDoubleSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &qBroomDlg::onCleanHeightChanged);
+		connect(broomLengthDoubleSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &qBroomDlg::onDimensionChanged);
+		connect(broomWidthDoubleSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &qBroomDlg::onDimensionChanged);
 		connect(broomThicknessDoubleSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &qBroomDlg::onDimensionChanged);
 
 		connect(selectionModeComboBox, qOverload<int>(&QComboBox::currentIndexChanged), this, &qBroomDlg::onSelectionModeChanged);
-		connect(undoPushButton,        &QAbstractButton::clicked, this, &qBroomDlg::doUndo);
-		connect(undo10PushButton,      &QAbstractButton::clicked, this, &qBroomDlg::doUndo10);
-		connect(repositionPushButton,  &QAbstractButton::clicked, this, &qBroomDlg::onReposition);
-		connect(automatePushButton,    &QAbstractButton::clicked, this, &qBroomDlg::onAutomate);
+		connect(undoPushButton, &QAbstractButton::clicked, this, &qBroomDlg::doUndo);
+		connect(undo10PushButton, &QAbstractButton::clicked, this, &qBroomDlg::doUndo10);
+		connect(repositionPushButton, &QAbstractButton::clicked, this, &qBroomDlg::onReposition);
+		connect(automatePushButton, &QAbstractButton::clicked, this, &qBroomDlg::onAutomate);
 
-		connect(cancelPushButton,   &QAbstractButton::clicked, this, &qBroomDlg::cancel);
-		connect(applyPushButton,    &QAbstractButton::clicked, this, &qBroomDlg::apply);
+		connect(cancelPushButton, &QAbstractButton::clicked, this, &qBroomDlg::cancel);
+		connect(applyPushButton, &QAbstractButton::clicked, this, &qBroomDlg::apply);
 		connect(validatePushButton, &QAbstractButton::clicked, this, &qBroomDlg::validate);
 
-		//view buttons
-		connect(topViewToolButton,    &QToolButton::clicked, [&]() { if (m_glWindow) m_glWindow->setView(CC_TOP_VIEW  ); });
-		connect(frontViewToolButton,  &QToolButton::clicked, [&]() { if (m_glWindow) m_glWindow->setView(CC_FRONT_VIEW); });
-		connect(leftViewToolButton,   &QToolButton::clicked, [&]() { if (m_glWindow) m_glWindow->setView(CC_LEFT_VIEW ); });
-		connect(backViewToolButton,   &QToolButton::clicked, [&]() { if (m_glWindow) m_glWindow->setView(CC_BACK_VIEW ); });
-		connect(rightViewToolButton,  &QToolButton::clicked, [&]() { if (m_glWindow) m_glWindow->setView(CC_RIGHT_VIEW); });
-		connect(bottomViewToolButton, &QToolButton::clicked, [&]() { if (m_glWindow) m_glWindow->setView(CC_TOP_VIEW  ); });
+		// view buttons
+		connect(topViewToolButton, &QToolButton::clicked, [&]()
+		        { if (m_glWindow) m_glWindow->setView(CC_TOP_VIEW  ); });
+		connect(frontViewToolButton, &QToolButton::clicked, [&]()
+		        { if (m_glWindow) m_glWindow->setView(CC_FRONT_VIEW); });
+		connect(leftViewToolButton, &QToolButton::clicked, [&]()
+		        { if (m_glWindow) m_glWindow->setView(CC_LEFT_VIEW ); });
+		connect(backViewToolButton, &QToolButton::clicked, [&]()
+		        { if (m_glWindow) m_glWindow->setView(CC_BACK_VIEW ); });
+		connect(rightViewToolButton, &QToolButton::clicked, [&]()
+		        { if (m_glWindow) m_glWindow->setView(CC_RIGHT_VIEW); });
+		connect(bottomViewToolButton, &QToolButton::clicked, [&]()
+		        { if (m_glWindow) m_glWindow->setView(CC_TOP_VIEW  ); });
 	}
 
 	freezeUI(true);
@@ -199,10 +204,10 @@ qBroomDlg::~qBroomDlg()
 
 cc2DLabel* qBroomDlg::Picking::addLabel(ccGenericPointCloud* cloud, unsigned pointIndex)
 {
-	cc2DLabel* label = new cc2DLabel(QString("%1").arg(labels.size()+1));
+	cc2DLabel* label = new cc2DLabel(QString("%1").arg(labels.size() + 1));
 	label->addPickedPoint(cloud, pointIndex);
 
-	//label->setEnabled(false);
+	// label->setEnabled(false);
 	label->setDisplayedIn2D(false);
 
 	try
@@ -218,13 +223,13 @@ cc2DLabel* qBroomDlg::Picking::addLabel(ccGenericPointCloud* cloud, unsigned poi
 
 	return label;
 }
-	
+
 void qBroomDlg::AutomationArea::clear()
 {
-	//remove the automation area polyline (if any)
+	// remove the automation area polyline (if any)
 	if (polyline)
 	{
-		//auto remove from display
+		// auto remove from display
 		if (polyline->getDisplay())
 		{
 			static_cast<ccGLWindowInterface*>(polyline->getDisplay())->removeFromOwnDB(polyline);
@@ -239,13 +244,13 @@ void qBroomDlg::AutomationArea::clear()
 
 void qBroomDlg::Picking::clear()
 {
-	//remove the 'labels' (if any)
+	// remove the 'labels' (if any)
 	for (size_t i = 0; i < labels.size(); ++i)
 	{
 		cc2DLabel* label = labels[i];
 		if (label)
 		{
-			//auto remove from display
+			// auto remove from display
 			if (label->getDisplay())
 			{
 				static_cast<ccGLWindowInterface*>(label->getDisplay())->removeFromOwnDB(label);
@@ -266,18 +271,18 @@ void qBroomDlg::freezeUI(bool state)
 
 void qBroomDlg::CloudBackup::backup(ccPointCloud* cloud)
 {
-	//save state
+	// save state
 	assert(!colors);
-	wasVisible = cloud->isVisible();
-	wasEnabled = cloud->isEnabled();
-	wasSelected = cloud->isSelected();
-	hadColors = cloud->hasColors();
-	displayedSFIndex = cloud->getCurrentDisplayedScalarFieldIndex();
-	originDisplay = cloud->getDisplay();
+	wasVisible          = cloud->isVisible();
+	wasEnabled          = cloud->isEnabled();
+	wasSelected         = cloud->isSelected();
+	hadColors           = cloud->hasColors();
+	displayedSFIndex    = cloud->getCurrentDisplayedScalarFieldIndex();
+	originDisplay       = cloud->getDisplay();
 	colorsWereDisplayed = cloud->colorsShown();
-	sfWasDisplayed = cloud->sfShown();
-	hadOctree = (cloud->getOctree() != nullptr);
-	ref = cloud;
+	sfWasDisplayed      = cloud->sfShown();
+	hadOctree           = (cloud->getOctree() != nullptr);
+	ref                 = cloud;
 }
 
 bool qBroomDlg::CloudBackup::backupColors()
@@ -287,20 +292,20 @@ bool qBroomDlg::CloudBackup::backupColors()
 		assert(false);
 		return false;
 	}
-	
-	//we backup the colors (as we are going to change them)
+
+	// we backup the colors (as we are going to change them)
 	if (ref->hasColors())
 	{
 		colors = new RGBAColorsTableType;
 		if (!colors->resizeSafe(ref->size()))
 		{
-			//not enough memory
+			// not enough memory
 			colors->release();
 			colors = nullptr;
 			return false;
 		}
 
-		//copy the existing colors
+		// copy the existing colors
 		for (unsigned i = 0; i < ref->size(); ++i)
 		{
 			colors->setValue(i, ref->getPointColor(i));
@@ -314,13 +319,13 @@ void qBroomDlg::CloudBackup::restore()
 {
 	if (!ref)
 	{
-		//nothing to do
+		// nothing to do
 		return;
 	}
 
 	if (!hadOctree)
 	{
-		//we can only delete the octree if it has not already been added to the DB tree!!!
+		// we can only delete the octree if it has not already been added to the DB tree!!!
 		if (!ref->getParent())
 		{
 			ref->deleteOctree();
@@ -329,11 +334,11 @@ void qBroomDlg::CloudBackup::restore()
 
 	if (hadColors)
 	{
-		//restore original colors
+		// restore original colors
 		if (colors)
 		{
 			assert(ref->hasColors());
-			for (unsigned i=0; i<ref->size(); ++i)
+			for (unsigned i = 0; i < ref->size(); ++i)
 			{
 				ref->setPointColor(i, colors->getValue(i));
 			}
@@ -365,14 +370,14 @@ void qBroomDlg::CloudBackup::clear()
 	{
 		if (ownCloud)
 		{
-			//the dialog takes care of its own clouds!
+			// the dialog takes care of its own clouds!
 			delete ref;
 		}
 		ref = nullptr;
 	}
 }
 
-bool qBroomDlg::setCloud(ccPointCloud* cloud, bool ownCloud/*=false*/, bool autoRedraw/*=true*/)
+bool qBroomDlg::setCloud(ccPointCloud* cloud, bool ownCloud /*=false*/, bool autoRedraw /*=true*/)
 {
 	if (!m_glWindow)
 	{
@@ -382,12 +387,12 @@ bool qBroomDlg::setCloud(ccPointCloud* cloud, bool ownCloud/*=false*/, bool auto
 
 	if (m_cloud.ref == cloud)
 	{
-		//just in case
+		// just in case
 		m_cloud.ownCloud = ownCloud;
-		//nothing to do
+		// nothing to do
 		return true;
 	}
-	
+
 	if (m_cloud.ref)
 	{
 		m_glWindow->removeFromOwnDB(m_cloud.ref);
@@ -403,18 +408,18 @@ bool qBroomDlg::setCloud(ccPointCloud* cloud, bool ownCloud/*=false*/, bool auto
 			ccLog::Error("Cloud is too small!");
 			return false;
 		}
-		
-		//backup the cloud original state
+
+		// backup the cloud original state
 		m_cloud.backup(cloud);
 
 		if (!m_cloud.backupColors())
 		{
-			//failed to backup the cloud colors
+			// failed to backup the cloud colors
 			ccLog::Error("Not enough memory");
 			return false;
 		}
 
-		//we need a selection table
+		// we need a selection table
 		try
 		{
 			m_selectionTable.clear();
@@ -432,7 +437,7 @@ bool qBroomDlg::setCloud(ccPointCloud* cloud, bool ownCloud/*=false*/, bool auto
 		applyPushButton->setEnabled(false);
 		validatePushButton->setEnabled(ownCloud);
 
-		//we need an octree
+		// we need an octree
 		if (!cloud->getOctree())
 		{
 			ccProgressDialog pDlg(true, this);
@@ -448,16 +453,16 @@ bool qBroomDlg::setCloud(ccPointCloud* cloud, bool ownCloud/*=false*/, bool auto
 			}
 		}
 
-		//we need colors
+		// we need colors
 		if (!cloud->hasColors())
 		{
-			//either we convert the current scalar field to RGB colors
+			// either we convert the current scalar field to RGB colors
 			bool success = false;
 			if (cloud->hasDisplayedScalarField())
 			{
 				success = cloud->convertCurrentScalarFieldToColors();
 			}
-			//or we simply set white colors
+			// or we simply set white colors
 			else
 			{
 				success = cloud->setColor(ccColor::white);
@@ -468,34 +473,34 @@ bool qBroomDlg::setCloud(ccPointCloud* cloud, bool ownCloud/*=false*/, bool auto
 				return false;
 			}
 		}
-		//at this point we should always have colors!
+		// at this point we should always have colors!
 		assert(cloud->hasColors());
-		//but we want them to be grey scaled
+		// but we want them to be grey scaled
 		cloud->convertRGBToGreyScale();
 
-		//force visibility and other parameters
+		// force visibility and other parameters
 		cloud->setEnabled(true);
 		cloud->setVisible(true);
 		cloud->setSelected(false);
 		cloud->showColors(true);
 		cloud->showSF(false);
-		
-		//from now on, the cloud will be automatically deleted if it's 'owned' by the dialog
+
+		// from now on, the cloud will be automatically deleted if it's 'owned' by the dialog
 		m_cloud.ownCloud = ownCloud;
 
-		m_glWindow->addToOwnDB(m_cloud.ref); //warning: will change the display!
+		m_glWindow->addToOwnDB(m_cloud.ref); // warning: will change the display!
 
 		if (m_cloud.originDisplay)
 		{
-			//apply the same viewport as the original display
+			// apply the same viewport as the original display
 			ccViewportParameters viewport = m_cloud.originDisplay->getViewportParameters();
 			m_glWindow->setViewportParameters(viewport);
 
-			//by the way, update some parameters of the 3D view (in case they have changed since last call)
-			//const ccGui::ParamStruct& displayParams = ccGui::Parameters();
-			//m_glWindow->setDisplayParameters(displayParams);
+			// by the way, update some parameters of the 3D view (in case they have changed since last call)
+			// const ccGui::ParamStruct& displayParams = ccGui::Parameters();
+			// m_glWindow->setDisplayParameters(displayParams);
 
-			//import GL filter so as to get the same rendering aspect!
+			// import GL filter so as to get the same rendering aspect!
 			ccGlFilter* filter = static_cast<ccGLWindowInterface*>(m_cloud.originDisplay)->getGlFilter();
 			if (filter)
 			{
@@ -525,12 +530,12 @@ bool qBroomDlg::setCloud(ccPointCloud* cloud, bool ownCloud/*=false*/, bool auto
 void qBroomDlg::onSelectionModeChanged(int mode)
 {
 	SelectionModes formerMode = m_selectionMode;
-	m_selectionMode = static_cast<SelectionModes>(selectionModeComboBox->currentIndex());
+	m_selectionMode           = static_cast<SelectionModes>(selectionModeComboBox->currentIndex());
 	m_selectionBox->setEnabled(m_selectionMode != INSIDE);
 	cleanHeightDoubleSpinBox->setEnabled(m_selectionMode != INSIDE);
 	if (m_selectionMode != formerMode)
 	{
-		removeSelectedPointsCheckBox->setChecked(mode != 0); //mode '0' is inside (--> we'll probably want to keep these points)
+		removeSelectedPointsCheckBox->setChecked(mode != 0); // mode '0' is inside (--> we'll probably want to keep these points)
 		if (m_glWindow)
 		{
 			updateBroomBox();
@@ -552,38 +557,38 @@ void qBroomDlg::updateAutomationAreaPolyline(int x, int y)
 	{
 		return;
 	}
-	
+
 	if (m_autoArea.clickedPoints.empty() || m_autoArea.clickedPoints.size() > 2)
 	{
 		assert(false);
 		return;
 	}
 
-	//current 3D view parameters
+	// current 3D view parameters
 	ccGLCameraParameters camera;
 	m_glWindow->getGLCameraParameters(camera);
 
 	ccPointCloud* vertices = nullptr;
 	if (!m_autoArea.polyline)
 	{
-		vertices = new ccPointCloud();
+		vertices            = new ccPointCloud();
 		m_autoArea.polyline = new ccPolyline(vertices);
 		m_autoArea.polyline->addChild(vertices);
 		vertices->setVisible(false);
 		if (!vertices->reserve(4) || !m_autoArea.polyline->reserve(4))
 		{
-			//not enough memory
+			// not enough memory
 			delete m_autoArea.polyline;
 			m_autoArea.polyline = nullptr;
 			return;
 		}
 
-		//add 4 fake points (will be updated with the new clicked point
+		// add 4 fake points (will be updated with the new clicked point
 		vertices->addPoint(CCVector3(0, 0, 0));
 		vertices->addPoint(CCVector3(0, 0, 0));
 		vertices->addPoint(CCVector3(0, 0, 0));
 		vertices->addPoint(CCVector3(0, 0, 0));
-		m_autoArea.polyline->addPointIndex(0, 2); //we only display a segment at first
+		m_autoArea.polyline->addPointIndex(0, 2); // we only display a segment at first
 		m_autoArea.polyline->setEnabled(true);
 		m_autoArea.polyline->setVisible(true);
 		m_autoArea.polyline->setWidth(2);
@@ -597,37 +602,37 @@ void qBroomDlg::updateAutomationAreaPolyline(int x, int y)
 	{
 		vertices = dynamic_cast<ccPointCloud*>(m_autoArea.polyline->getAssociatedCloud());
 	}
-	
+
 	if (!vertices)
 	{
 		assert(false);
 		return;
 	}
 
-	//always reproject the first point (if we move the camera)
-	//same thing for the second point (if any)
-	for (size_t i=0; i<std::min<size_t>(m_autoArea.clickedPoints.size(), 2); ++i)
+	// always reproject the first point (if we move the camera)
+	// same thing for the second point (if any)
+	for (size_t i = 0; i < std::min<size_t>(m_autoArea.clickedPoints.size(), 2); ++i)
 	{
 		const CCVector3& P03D = m_autoArea.clickedPoints[i];
-		CCVector3d C02D;
+		CCVector3d       C02D;
 		camera.project(P03D, C02D);
 		C02D.x -= camera.viewport[2] / 2.0;
 		C02D.y -= camera.viewport[3] / 2.0;
 		*const_cast<CCVector3*>(vertices->getPoint(static_cast<unsigned>(i))) = C02D.toPC();
 	}
 
-	//broom position/orientation
+	// broom position/orientation
 	const ccGLMatrix& broomTrans = m_boxes->getGLTransformation();
 
-	//project the current mouse position in 3D AND on the broom plane
+	// project the current mouse position in 3D AND on the broom plane
 	CCVector3 P3D;
 	{
 		CCVector3d M03D;
 		CCVector3d M13D;
-		QPointF pos2D = m_glWindow->toCornerGLCoordinates(x, y);
+		QPointF    pos2D = m_glWindow->toCornerGLCoordinates(x, y);
 		camera.unproject(CCVector3(pos2D.x(), pos2D.y(), 0), M03D);
 		camera.unproject(CCVector3(pos2D.x(), pos2D.y(), 1), M13D);
- 		if (!Intersection(broomTrans, M03D.toPC(), M13D.toPC(), P3D))
+		if (!Intersection(broomTrans, M03D.toPC(), M13D.toPC(), P3D))
 		{
 			return;
 		}
@@ -635,7 +640,7 @@ void qBroomDlg::updateAutomationAreaPolyline(int x, int y)
 
 	if (m_autoArea.clickedPoints.size() == 1)
 	{
-		//simply update the second vertex position
+		// simply update the second vertex position
 		CCVector3d C12D;
 		camera.project(P3D, C12D);
 		C12D.x -= camera.viewport[2] / 2.0;
@@ -644,17 +649,17 @@ void qBroomDlg::updateAutomationAreaPolyline(int x, int y)
 	}
 	else if (m_autoArea.clickedPoints.size() == 2)
 	{
-		//update the 3rd and 4th vertices
+		// update the 3rd and 4th vertices
 		const CCVector3& P03D = m_autoArea.clickedPoints[0];
 		const CCVector3& P13D = m_autoArea.clickedPoints[1];
 
-		CCVector3 Xp = P13D-P03D;
+		CCVector3 Xp = P13D - P03D;
 		CCVector3 Zp = broomTrans.getColumnAsVec3D(2);
-		CCVector3 Yp = Zp.cross(Xp); //should be already normal to Zp and Xp as P03D and P13D are on the broom plane!
+		CCVector3 Yp = Zp.cross(Xp); // should be already normal to Zp and Xp as P03D and P13D are on the broom plane!
 		Yp.normalize();
 
-		//distance from the new point to (Xp)
-		PointCoordinateType dist = (P3D-P03D).dot(Yp);
+		// distance from the new point to (Xp)
+		PointCoordinateType dist = (P3D - P03D).dot(Yp);
 
 		CCVector3d C2D;
 		camera.project(P13D + dist * Yp, C2D);
@@ -670,7 +675,7 @@ void qBroomDlg::updateAutomationAreaPolyline(int x, int y)
 
 		if (m_autoArea.polyline->size() == 2)
 		{
-			m_autoArea.polyline->addPointIndex(2, 4); //we now display a rectangle
+			m_autoArea.polyline->addPointIndex(2, 4); // we now display a rectangle
 		}
 	}
 
@@ -681,10 +686,10 @@ void qBroomDlg::updateAutomationAreaPolyline(int x, int y)
 
 void qBroomDlg::getBroomDimensions(BroomDimensions& dimensions) const
 {
-	//now we can start the automation process
+	// now we can start the automation process
 	dimensions.length = static_cast<PointCoordinateType>(broomLengthDoubleSpinBox->value());
-	dimensions.width = static_cast<PointCoordinateType>(broomWidthDoubleSpinBox->value() / 100.0) * dimensions.length;
-	dimensions.thick = static_cast<PointCoordinateType>(broomThicknessDoubleSpinBox->value() / 100.0) * dimensions.length;
+	dimensions.width  = static_cast<PointCoordinateType>(broomWidthDoubleSpinBox->value() / 100.0) * dimensions.length;
+	dimensions.thick  = static_cast<PointCoordinateType>(broomThicknessDoubleSpinBox->value() / 100.0) * dimensions.length;
 	dimensions.height = static_cast<PointCoordinateType>(cleanHeightDoubleSpinBox->value());
 }
 
@@ -705,46 +710,46 @@ bool qBroomDlg::startAutomation()
 	CCVector3 P0 = m_autoArea.clickedPoints[0];
 	CCVector3 P1 = m_autoArea.clickedPoints[1];
 	CCVector3 P2 = m_autoArea.clickedPoints[2];
-	
-	//current broom orientation
-	ccGLMatrix initialBroomTrans = m_boxes->getGLTransformation();
+
+	// current broom orientation
+	ccGLMatrix initialBroomTrans  = m_boxes->getGLTransformation();
 	ccGLMatrix originalBroomTrans = initialBroomTrans;
 
-	//compute the min and max corners of the automation area
+	// compute the min and max corners of the automation area
 	CCVector3 origin = initialBroomTrans.getTranslationAsVec3D();
-	CCVector3 Xo = initialBroomTrans.getColumnAsVec3D(0);
-	CCVector3 Yo = initialBroomTrans.getColumnAsVec3D(1);
-	CCVector3 Zo = initialBroomTrans.getColumnAsVec3D(2);
+	CCVector3 Xo     = initialBroomTrans.getColumnAsVec3D(0);
+	CCVector3 Yo     = initialBroomTrans.getColumnAsVec3D(1);
+	CCVector3 Zo     = initialBroomTrans.getColumnAsVec3D(2);
 
-	//automation are
-	// A --------------- B
-	// |                 |
-	// |                 |
-	// D --------------- C
+	// automation are
+	//  A --------------- B
+	//  |                 |
+	//  |                 |
+	//  D --------------- C
 	CCVector3 AB = P1 - P0;
 	CCVector3 BC = P2 - P1;
-	CCVector3 X = AB;
-	CCVector3 Y = Zo.cross(X);
+	CCVector3 X  = AB;
+	CCVector3 Y  = Zo.cross(X);
 	X.normalize();
 	Y.normalize();
 
-	//compute the opposite corner (to P0)
+	// compute the opposite corner (to P0)
 	P1 += BC.dot(Y) * Y;
 
-	//we make the broom orientation match with the most similar direction
+	// we make the broom orientation match with the most similar direction
 	if (std::abs(X.dot(Xo)) < std::abs(X.dot(Yo)))
 	{
 		CCVector3 temp = X;
-		X = Y;
-		Y = -temp;
+		X              = Y;
+		Y              = -temp;
 	}
 
-	//update the broom orientation to match the automation area!
+	// update the broom orientation to match the automation area!
 	initialBroomTrans.setColumn(0, X);
 	initialBroomTrans.setColumn(1, Y);
 
-	CCVector3 BB0( (P0 - origin).dot(X), (P0 - origin).dot(Y), 0);
-	CCVector3 BB1( (P1 - origin).dot(X), (P1 - origin).dot(Y), 0);
+	CCVector3 BB0((P0 - origin).dot(X), (P0 - origin).dot(Y), 0);
+	CCVector3 BB1((P1 - origin).dot(X), (P1 - origin).dot(Y), 0);
 
 	if (BB0.x > BB1.x)
 	{
@@ -757,8 +762,8 @@ bool qBroomDlg::startAutomation()
 		std::swap(P0.y, P1.y);
 	}
 
-	if (	(BB0.x > 0 && BB0.y > 0)
-		||	(BB1.x < 0 && BB1.y < 0) )
+	if ((BB0.x > 0 && BB0.y > 0)
+	    || (BB1.x < 0 && BB1.y < 0))
 	{
 		QMessageBox::critical(this, "Misplaced area", "The broom is not inside the automation area");
 		return false;
@@ -766,11 +771,11 @@ bool qBroomDlg::startAutomation()
 
 	CCVector3 diagonal = BB1 - BB0;
 
-	//debug: show the automation area
+	// debug: show the automation area
 	ccPlane* plane = nullptr;
 	if (false)
 	{
-		CCVector3 center = (BB1 + BB0) / 2;
+		CCVector3  center     = (BB1 + BB0) / 2;
 		ccGLMatrix planeTrans = initialBroomTrans;
 		planeTrans.setTranslation(initialBroomTrans.getTranslationAsVec3D() + center.x * X + center.y * Y);
 		ccPlane* plane = new ccPlane(diagonal.x, diagonal.y, &planeTrans, "automation area");
@@ -778,11 +783,11 @@ bool qBroomDlg::startAutomation()
 		m_glWindow->redraw();
 	}
 
-	//now we can start the automation process
+	// now we can start the automation process
 	BroomDimensions broom;
 	getBroomDimensions(broom);
 
-	//we reduce the broom size if necessary 
+	// we reduce the broom size if necessary
 	if (broom.length > diagonal.x)
 	{
 		broom.length = diagonal.x;
@@ -793,41 +798,41 @@ bool qBroomDlg::startAutomation()
 	}
 
 	ccGLMatrix broomTrans = initialBroomTrans;
-	CCVector3d Xd = X;
-	CCVector3d Yd = Y;
+	CCVector3d Xd         = X;
+	CCVector3d Yd         = Y;
 
-	bool stickToTheFloor = stickCheckBox->isChecked();
+	bool stickToTheFloor   = stickCheckBox->isChecked();
 	bool animateAutomation = animateAutomationCheckBox->isChecked();
 
 	QProgressDialog progressDialog("Automation in progress...", "Cancel", 0, 0, this);
 	progressDialog.show();
 
-	//overlap between each position
+	// overlap between each position
 	double overlapRatio = 0.9;
 
-	double sign = -1.0;
-	bool lostTrack = false;
+	double sign      = -1.0;
+	bool   lostTrack = false;
 	while (true)
 	{
-		//detect if this row is the last one (for the current scan direction)
+		// detect if this row is the last one (for the current scan direction)
 		bool lastRow = false;
 		{
 			CCVector3 broomCenter = broomTrans.getTranslationAsVec3D() - origin;
-			if (sign < 0.0 && broomCenter.dot(X) <= BB0.x + broom.length / 2 )
+			if (sign < 0.0 && broomCenter.dot(X) <= BB0.x + broom.length / 2)
 			{
-				lastRow = true;
+				lastRow     = true;
 				broomCenter = origin + (BB0.x + broom.length / 2) * X + broomCenter.dot(Y) * Y;
 				broomTrans.setTranslation(broomCenter);
 			}
 			else if (sign > 0.0 && broomCenter.dot(X) >= BB1.x - broom.length / 2)
 			{
-				lastRow = true;
+				lastRow     = true;
 				broomCenter = origin + (BB1.x - broom.length / 2) * X + broomCenter.dot(Y) * Y;
 				broomTrans.setTranslation(broomCenter);
 			}
 		}
-		
-		//get the points at the current position
+
+		// get the points at the current position
 		selectPoints(broomTrans, &broom);
 		if (animateAutomation)
 		{
@@ -837,30 +842,30 @@ bool qBroomDlg::startAutomation()
 
 		bool cancelled = false;
 
-		//test backward
+		// test backward
 		{
 			ccGLMatrix backwardBroomTrans = broomTrans;
-			bool lastColumn = false;
+			bool       lastColumn         = false;
 			while (!lastColumn)
 			{
 				double broomDeltaY = -(broom.width * overlapRatio);
 
-				//clip inside automation area
+				// clip inside automation area
 				{
 					CCVector3 broomCenter = backwardBroomTrans.getTranslationAsVec3D() - origin;
 					if (broomCenter.dot(Y) - broom.width / 2 + broomDeltaY <= BB0.y)
 					{
-						lastColumn = true;
+						lastColumn  = true;
 						broomDeltaY = BB0.y - broomCenter.dot(Y) + broom.width / 2;
 					}
 				}
 
 				CCVector3d broomDelta = broomDeltaY * Yd;
 
-				if (	!moveBroom(backwardBroomTrans, broomDelta, stickToTheFloor)
-					||	broomDelta.norm() < broom.width / 20.0)
+				if (!moveBroom(backwardBroomTrans, broomDelta, stickToTheFloor)
+				    || broomDelta.norm() < broom.width / 20.0)
 				{
-					//hole or too steep slope? we stop
+					// hole or too steep slope? we stop
 					lostTrack = true;
 					break;
 				}
@@ -886,31 +891,31 @@ bool qBroomDlg::startAutomation()
 			ccLog::Warning("Automation process cancelled by the user");
 			break;
 		}
-		
-		//test forward
+
+		// test forward
 		{
 			ccGLMatrix forwardBroomTrans = broomTrans;
-			bool lastColumn = false;
+			bool       lastColumn        = false;
 			while (!lastColumn)
 			{
 				double broomDeltaY = (broom.width * overlapRatio);
 
-				//clip inside automation area
+				// clip inside automation area
 				{
 					CCVector3 broomCenter = forwardBroomTrans.getTranslationAsVec3D() - origin;
 					if (broomCenter.dot(Y) + broom.width / 2 + broomDeltaY >= BB1.y)
 					{
-						lastColumn = true;
+						lastColumn  = true;
 						broomDeltaY = BB1.y - broomCenter.dot(Y) - broom.width / 2;
 					}
 				}
 
 				CCVector3d broomDelta = broomDeltaY * Yd;
 
-				if (	!moveBroom(forwardBroomTrans, broomDelta, stickToTheFloor)
-					||	broomDelta.norm() < broom.width / 20.0)
+				if (!moveBroom(forwardBroomTrans, broomDelta, stickToTheFloor)
+				    || broomDelta.norm() < broom.width / 20.0)
 				{
-					//hole or too steep slope? we stop
+					// hole or too steep slope? we stop
 					lostTrack = true;
 					break;
 				}
@@ -936,33 +941,33 @@ bool qBroomDlg::startAutomation()
 			ccLog::Warning("Automation process cancelled by the user");
 			break;
 		}
-		
-		//next row
+
+		// next row
 		{
 			ccGLMatrix nextRowBroomTrans = broomTrans;
 			if (lastRow)
 			{
 				if (sign < 0.0)
 				{
-					//change the sign
+					// change the sign
 					sign = 1.0;
-					//reset the current position
+					// reset the current position
 					nextRowBroomTrans = initialBroomTrans;
 				}
 				else
 				{
-					//we can stop
+					// we can stop
 					break;
 				}
 			}
 
-			//try to shift the row
+			// try to shift the row
 			CCVector3d broomDelta = (sign * broom.length * overlapRatio) * Xd;
-			if (	!moveBroom(nextRowBroomTrans, broomDelta, stickToTheFloor)
-				||	broomDelta.norm() < broom.length / 20.0)
+			if (!moveBroom(nextRowBroomTrans, broomDelta, stickToTheFloor)
+			    || broomDelta.norm() < broom.length / 20.0)
 			{
-				//hole or too steep slope?
-				//we stop
+				// hole or too steep slope?
+				// we stop
 				lostTrack = true;
 			}
 			broomTrans = nextRowBroomTrans;
@@ -974,36 +979,35 @@ bool qBroomDlg::startAutomation()
 		ccLog::Warning("Holes or too steep slope encountered during automation process");
 	}
 
-	//restore original state
+	// restore original state
 	m_boxes->setGLTransformation(originalBroomTrans);
 	m_glWindow->redraw();
 
 	return true;
-
 }
 
 bool qBroomDlg::positionBroom(const CCVector3& P0, const CCVector3& P1)
 {
-	CCVector3 X = P1-P0;
+	CCVector3           X      = P1 - P0;
 	PointCoordinateType length = X.norm();
-	
-	//update UI
+
+	// update UI
 	{
 		broomLengthDoubleSpinBox->blockSignals(true);
 		broomLengthDoubleSpinBox->setValue(length);
-		broomLengthDoubleSpinBox->setSingleStep(length/10.0); //10 percent
+		broomLengthDoubleSpinBox->setSingleStep(length / 10.0); // 10 percent
 		broomLengthDoubleSpinBox->blockSignals(false);
 
 		cleanHeightDoubleSpinBox->blockSignals(true);
 		cleanHeightDoubleSpinBox->setValue(length);
-		cleanHeightDoubleSpinBox->setSingleStep(length/10.0); //10 percent
+		cleanHeightDoubleSpinBox->setSingleStep(length / 10.0); // 10 percent
 		cleanHeightDoubleSpinBox->blockSignals(false);
 	}
 
-	//PointCoordinateType width = static_cast<PointCoordinateType>(broomWidthDoubleSpinBox->value() / 100.0) * length;
-	//PointCoordinateType thick = static_cast<PointCoordinateType>(broomThicknessDoubleSpinBox->value() / 100.0) * length;
+	// PointCoordinateType width = static_cast<PointCoordinateType>(broomWidthDoubleSpinBox->value() / 100.0) * length;
+	// PointCoordinateType thick = static_cast<PointCoordinateType>(broomThicknessDoubleSpinBox->value() / 100.0) * length;
 
-	//we need to probe the cloud to get the right vertical orientation
+	// we need to probe the cloud to get the right vertical orientation
 	ccOctree::Shared octree = m_cloud.ref->getOctree();
 	if (!octree)
 	{
@@ -1016,11 +1020,11 @@ bool qBroomDlg::positionBroom(const CCVector3& P0, const CCVector3& P1)
 
 	CCCoreLib::DgmOctree::CylindricalNeighbourhood nn;
 	nn.center = (P0 + P1) / 2;
-	nn.dir = X;
+	nn.dir    = X;
 	nn.dir.normalize();
-	nn.radius = length * 0.05; //5% of the broom length?
-	nn.level = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(nn.radius);
-	nn.maxHalfLength = length / 2;
+	nn.radius          = length * 0.05; // 5% of the broom length?
+	nn.level           = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(nn.radius);
+	nn.maxHalfLength   = length / 2;
 	nn.onlyPositiveDir = false;
 
 	size_t count = octree->getPointsInCylindricalNeighbourhood(nn);
@@ -1032,13 +1036,13 @@ bool qBroomDlg::positionBroom(const CCVector3& P0, const CCVector3& P1)
 		BroomDimensions broom;
 		getBroomDimensions(broom);
 		nn.dimensions = CCVector3(broom.length, broom.width, broom.thick);
-		nn.center = (P0 + P1) / 2;
-		nn.axes = new CCVector3[3];
+		nn.center     = (P0 + P1) / 2;
+		nn.axes       = new CCVector3[3];
 		{
 			nn.axes[0] = X;
 			nn.axes[0].normalize();
 
-			//generate an arbitrary coordinate system
+			// generate an arbitrary coordinate system
 			CCVector3 Z(0, 0, 1);
 			if (Z.dot(nn.axes[0]) < 0.1)
 			{
@@ -1051,7 +1055,7 @@ bool qBroomDlg::positionBroom(const CCVector3& P0, const CCVector3& P1)
 			nn.axes[1] = Y;
 			nn.axes[2] = Z;
 		}
-		nn.level = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(std::max(broom.length/5, std::max(broom.width, broom.thick)));
+		nn.level = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(std::max(broom.length / 5, std::max(broom.width, broom.thick)));
 	}
 
 	size_t count = octree->getPointsInBoxNeighbourhood(nn);
@@ -1070,14 +1074,14 @@ bool qBroomDlg::positionBroom(const CCVector3& P0, const CCVector3& P1)
 	CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&nn.neighbours);
 
 	CCCoreLib::Neighbourhood n(&neighboursCloud);
-	const CCVector3* N = n.getLSPlaneNormal();
+	const CCVector3*         N = n.getLSPlaneNormal();
 	if (!N)
 	{
 		ccLog::Error("Failed to detect a planar surface below the two points");
 		return false;
 	}
 
-	//extract the local coordinate system basis
+	// extract the local coordinate system basis
 	CCVector3 Z = *N;
 	Z.normalize();
 	CCVector3 Y = Z.cross(X);
@@ -1098,14 +1102,14 @@ bool qBroomDlg::positionBroom(const CCVector3& P0, const CCVector3& P1)
 	}
 #endif
 
-	//show the broom
+	// show the broom
 	m_boxes->setEnabled(true);
-	onDimensionChanged(0.0); //to update the display
-	//m_glWindow->redraw();
+	onDimensionChanged(0.0); // to update the display
+	// m_glWindow->redraw();
 
-	//now we wait for the user to click on the broom
+	// now we wait for the user to click on the broom
 	m_glWindow->setInteractionMode(ccGLWindowInterface::MODE_TRANSFORM_CAMERA | ccGLWindowInterface::INTERACT_SIG_LB_CLICKED);
-		
+
 	return true;
 }
 
@@ -1127,7 +1131,7 @@ void qBroomDlg::handlePickedItem(ccHObject* entity, unsigned itemIdx, int x, int
 
 	if (entity != m_cloud.ref)
 	{
-		//could be the broom!
+		// could be the broom!
 		return;
 	}
 
@@ -1154,13 +1158,13 @@ void qBroomDlg::handlePickedItem(ccHObject* entity, unsigned itemIdx, int x, int
 		switch (m_picking.mode)
 		{
 		case Picking::BROOM_PICKING:
-			{
-				//extract the points around the broom
-				bool success = positionBroom(P0, P1);
-				automatePushButton->setEnabled(success);
-				stopBroomPicking();
-			}
-			break;
+		{
+			// extract the points around the broom
+			bool success = positionBroom(P0, P1);
+			automatePushButton->setEnabled(success);
+			stopBroomPicking();
+		}
+		break;
 
 		default:
 			assert(false);
@@ -1170,10 +1174,10 @@ void qBroomDlg::handlePickedItem(ccHObject* entity, unsigned itemIdx, int x, int
 
 void qBroomDlg::stopBroomPicking()
 {
-	freezeUI(!m_boxes->isEnabled()); //we only unfreeze the UI if the broom is valid (enabled)
-	
+	freezeUI(!m_boxes->isEnabled()); // we only unfreeze the UI if the broom is valid (enabled)
+
 	repositionPushButton->setText("Reposition");
-	m_glWindow->displayNewMessage(QString(), ccGLWindowInterface::UPPER_CENTER_MESSAGE); //clear the area
+	m_glWindow->displayNewMessage(QString(), ccGLWindowInterface::UPPER_CENTER_MESSAGE); // clear the area
 	m_glWindow->setPickingMode(ccGLWindowInterface::NO_PICKING);
 	m_picking.mode = Picking::NO_PICKING;
 	m_picking.clear();
@@ -1183,8 +1187,8 @@ void qBroomDlg::stopBroomPicking()
 
 void qBroomDlg::onReposition()
 {
-	//if we click on the 'Reposition' button while we are
-	//already 'repositioning', then it means we cancel it!
+	// if we click on the 'Reposition' button while we are
+	// already 'repositioning', then it means we cancel it!
 	if (m_picking.mode == Picking::BROOM_PICKING)
 	{
 		stopBroomPicking();
@@ -1192,20 +1196,20 @@ void qBroomDlg::onReposition()
 		return;
 	}
 
-	//enable picking
+	// enable picking
 	repositionPushButton->setText("Cancel");
 	automatePushButton->setEnabled(false);
 	m_glWindow->setInteractionMode(ccGLWindowInterface::MODE_TRANSFORM_CAMERA);
 	m_glWindow->setPickingMode(ccGLWindowInterface::POINT_PICKING);
 	m_picking.mode = Picking::BROOM_PICKING;
 
-	//hide the broom
+	// hide the broom
 	lostTrackFrame->setVisible(false);
 	m_boxes->setEnabled(false);
-	
+
 	freezeUI(true);
 
-	//display message
+	// display message
 	m_glWindow->displayNewMessage("Pick two points on the cloud", ccGLWindowInterface::UPPER_CENTER_MESSAGE, false, 3600, ccGLWindowInterface::CUSTOM_MESSAGE);
 
 	m_glWindow->redraw();
@@ -1213,38 +1217,38 @@ void qBroomDlg::onReposition()
 
 void qBroomDlg::stopAutomation()
 {
-	freezeUI(false); //we only unfreeze the UI if the broom is valid (enabled)
-	
+	freezeUI(false); // we only unfreeze the UI if the broom is valid (enabled)
+
 	automatePushButton->setText("Automate");
-	m_glWindow->displayNewMessage(QString(), ccGLWindowInterface::UPPER_CENTER_MESSAGE); //clear the area
-	//m_glWindow->setPickingMode(ccGLWindowInterface::NO_PICKING);
-	m_glWindow->setInteractionMode(ccGLWindowInterface::MODE_TRANSFORM_CAMERA | ccGLWindowInterface::INTERACT_SIG_LB_CLICKED); //Standard interaction for manual broom displacement!
+	m_glWindow->displayNewMessage(QString(), ccGLWindowInterface::UPPER_CENTER_MESSAGE); // clear the area
+	// m_glWindow->setPickingMode(ccGLWindowInterface::NO_PICKING);
+	m_glWindow->setInteractionMode(ccGLWindowInterface::MODE_TRANSFORM_CAMERA | ccGLWindowInterface::INTERACT_SIG_LB_CLICKED); // Standard interaction for manual broom displacement!
 	m_picking.mode = Picking::NO_PICKING;
-	//m_picking.clear();
+	// m_picking.clear();
 	m_autoArea.clear();
 	m_glWindow->redraw();
 }
 
 void qBroomDlg::onAutomate()
 {
-	//if we click on the 'Automate' button while we are
-	//already picking points for it, then it means we cancel it!
+	// if we click on the 'Automate' button while we are
+	// already picking points for it, then it means we cancel it!
 	if (m_picking.mode == Picking::AUTO_AREA_PICKING)
 	{
 		stopAutomation();
 		return;
 	}
 
-	//enable picking
+	// enable picking
 	automatePushButton->setText("Cancel");
 	m_glWindow->setInteractionMode(ccGLWindowInterface::MODE_PAN_ONLY | ccGLWindowInterface::INTERACT_SIG_LB_CLICKED);
-	//m_glWindow->setPickingMode(ccGLWindowInterface::POINT_PICKING); //We don't actually 'pick' an existing point!
+	// m_glWindow->setPickingMode(ccGLWindowInterface::POINT_PICKING); //We don't actually 'pick' an existing point!
 	m_picking.mode = Picking::AUTO_AREA_PICKING;
-	m_autoArea.clear(); //just in case
+	m_autoArea.clear(); // just in case
 
 	freezeUI(true);
 
-	//display message
+	// display message
 	m_glWindow->displayNewMessage("Pick two corners of the area to clean", ccGLWindowInterface::UPPER_CENTER_MESSAGE, false, 3600, ccGLWindowInterface::CUSTOM_MESSAGE);
 
 	m_glWindow->redraw();
@@ -1265,16 +1269,16 @@ void qBroomDlg::onLeftButtonClicked(int x, int y)
 	ccGLCameraParameters camera;
 	m_glWindow->getGLCameraParameters(camera);
 
-	//Definition of the automation area
+	// Definition of the automation area
 	if (m_picking.mode == Picking::AUTO_AREA_PICKING)
 	{
-		//project the currrent mouse position in 3D AND on the broom plane
+		// project the currrent mouse position in 3D AND on the broom plane
 		CCVector3 P3D;
 		{
 			ccGLMatrix broomTrans = m_boxes->getGLTransformation();
 			CCVector3d M03D;
 			CCVector3d M13D;
-			QPointF pos2D = m_glWindow->toCornerGLCoordinates(x, y);
+			QPointF    pos2D = m_glWindow->toCornerGLCoordinates(x, y);
 			camera.unproject(CCVector3(pos2D.x(), pos2D.y(), 0), M03D);
 			camera.unproject(CCVector3(pos2D.x(), pos2D.y(), 1), M13D);
 			if (!Intersection(broomTrans, M03D.toPC(), M13D.toPC(), P3D))
@@ -1290,11 +1294,11 @@ void qBroomDlg::onLeftButtonClicked(int x, int y)
 		switch (m_autoArea.clickedPoints.size())
 		{
 		case 1:
-			//we switch to mouse tracking in order to display the current area polyline
-			m_glWindow->setInteractionMode( m_glWindow->getInteractionMode() | ccGLWindowInterface::INTERACT_SIG_MOUSE_MOVED );
+			// we switch to mouse tracking in order to display the current area polyline
+			m_glWindow->setInteractionMode(m_glWindow->getInteractionMode() | ccGLWindowInterface::INTERACT_SIG_MOUSE_MOVED);
 			break;
 		case 2:
-			//nothing to do
+			// nothing to do
 			break;
 		case 3:
 			startAutomation();
@@ -1305,40 +1309,40 @@ void qBroomDlg::onLeftButtonClicked(int x, int y)
 			return;
 		}
 	}
-	else //selection of the broom
+	else // selection of the broom
 	{
-		m_lastMousePos = QPoint(x, y);
+		m_lastMousePos  = QPoint(x, y);
 		m_broomSelected = false;
 		{
-			int nearestTriIndex = -1;
-			double nearestSquareDist = 0;
+			int        nearestTriIndex   = -1;
+			double     nearestSquareDist = 0;
 			CCVector3d P;
-			QPointF pos2D = m_glWindow->toCornerGLCoordinates(x, y);
-			m_broomSelected = m_broomBox->trianglePicking(	CCVector2d(pos2D.x(), pos2D.y()),
-															camera,
-															nearestTriIndex,
-															nearestSquareDist,
-															P);
+			QPointF    pos2D = m_glWindow->toCornerGLCoordinates(x, y);
+			m_broomSelected  = m_broomBox->trianglePicking(CCVector2d(pos2D.x(), pos2D.y()),
+                                                          camera,
+                                                          nearestTriIndex,
+                                                          nearestSquareDist,
+                                                          P);
 		}
 
 		m_hasLastMousePos3D = false;
 		if (m_broomSelected)
 		{
-			//compute the click position in 3D
+			// compute the click position in 3D
 			if (stickCheckBox->isChecked())
 			{
-				//compute click direction in 3D
-				QPointF pos2D = m_glWindow->toCornerGLCoordinates(m_lastMousePos.x(), m_lastMousePos.y());
+				// compute click direction in 3D
+				QPointF    pos2D = m_glWindow->toCornerGLCoordinates(m_lastMousePos.x(), m_lastMousePos.y());
 				CCVector3d A2D(pos2D.x(), pos2D.y(), 0);
 				CCVector3d B2D(pos2D.x(), pos2D.y(), 1);
 				CCVector3d A3D;
 				CCVector3d B3D;
-				if (	camera.unproject(A2D, A3D)
-					&&	camera.unproject(B2D, B3D) )
+				if (camera.unproject(A2D, A3D)
+				    && camera.unproject(B2D, B3D))
 				{
 					m_hasLastMousePos3D = Intersection(m_boxes->getGLTransformation(), A3D.toPC(), B3D.toPC(), m_lastMousePos3D);
 
-					//test
+					// test
 					if (false && m_hasLastMousePos3D)
 					{
 						ccPointCloud* fakeCloud = new ccPointCloud;
@@ -1356,10 +1360,10 @@ void qBroomDlg::onLeftButtonClicked(int x, int y)
 				}
 			}
 
-			m_glWindow->setInteractionMode(	ccGLWindowInterface::INTERACT_PAN
-										|	ccGLWindowInterface::INTERACT_ZOOM_CAMERA
-										|	ccGLWindowInterface::INTERACT_SIG_MOUSE_MOVED
-										|	ccGLWindowInterface::INTERACT_SIG_BUTTON_RELEASED);
+			m_glWindow->setInteractionMode(ccGLWindowInterface::INTERACT_PAN
+			                               | ccGLWindowInterface::INTERACT_ZOOM_CAMERA
+			                               | ccGLWindowInterface::INTERACT_SIG_MOUSE_MOVED
+			                               | ccGLWindowInterface::INTERACT_SIG_BUTTON_RELEASED);
 			m_broomBox->setTempColor(ccColor::red);
 			m_glWindow->redraw();
 		}
@@ -1377,8 +1381,8 @@ void qBroomDlg::onMouseMoved(int x, int y, Qt::MouseButtons button)
 		assert(false);
 		return;
 	}
-	
-	//normally the broom must be selected and the left mouse button pressed
+
+	// normally the broom must be selected and the left mouse button pressed
 	if (!m_broomSelected || button != Qt::LeftButton)
 	{
 		if (m_picking.mode == Picking::AUTO_AREA_PICKING)
@@ -1390,44 +1394,44 @@ void qBroomDlg::onMouseMoved(int x, int y, Qt::MouseButtons button)
 
 	QPoint mousePos(x, y);
 	{
-		bool stickToTheFloor = stickCheckBox->isChecked();
-		bool hasAlreadyLostTrack = lostTrackFrame->isVisible();
-		ccGLMatrix broomTrans = m_boxes->getGLTransformation();
+		bool       stickToTheFloor     = stickCheckBox->isChecked();
+		bool       hasAlreadyLostTrack = lostTrackFrame->isVisible();
+		ccGLMatrix broomTrans          = m_boxes->getGLTransformation();
 
-		//compute broom translation
-		CCVector3d broomDelta(0,0,0);
+		// compute broom translation
+		CCVector3d broomDelta(0, 0, 0);
 		{
 			m_hasLastMousePos3D = true;
-			m_lastMousePos3D = broomTrans.getTranslationAsVec3D();
+			m_lastMousePos3D    = broomTrans.getTranslationAsVec3D();
 
-			//compute translation in 3D
+			// compute translation in 3D
 			if (!stickToTheFloor || !m_hasLastMousePos3D)
 			{
-				double pixSize = m_glWindow->computeActualPixelSize();
-				QPoint d = mousePos - m_lastMousePos;
-				CCVector3d u(d.x()*pixSize, -d.y()*pixSize, 0);
+				double     pixSize = m_glWindow->computeActualPixelSize();
+				QPoint     d       = mousePos - m_lastMousePos;
+				CCVector3d u(d.x() * pixSize, -d.y() * pixSize, 0);
 				m_glWindow->getViewportParameters().viewMat.transposed().applyRotation(u);
 				broomDelta = u;
 			}
 
 			if (stickToTheFloor)
 			{
-				//compute the click position in 3D
+				// compute the click position in 3D
 				ccGLCameraParameters camera;
 				m_glWindow->getGLCameraParameters(camera);
 
-				//compute click direction in 3D
-				QPointF pos2D = m_glWindow->toCornerGLCoordinates(m_lastMousePos.x(), m_lastMousePos.y());
+				// compute click direction in 3D
+				QPointF    pos2D = m_glWindow->toCornerGLCoordinates(m_lastMousePos.x(), m_lastMousePos.y());
 				CCVector3d A2D(pos2D.x(), pos2D.y(), 0);
 				CCVector3d B2D(pos2D.x(), pos2D.y(), 1);
 				CCVector3d A3D;
 				CCVector3d B3D;
 
-				bool hasMousePos3D = false;
+				bool      hasMousePos3D = false;
 				CCVector3 mousePos3D;
-				
-				if (	camera.unproject(A2D, A3D)
-					&&	camera.unproject(B2D, B3D) )
+
+				if (camera.unproject(A2D, A3D)
+				    && camera.unproject(B2D, B3D))
 				{
 					hasMousePos3D = Intersection(m_boxes->getGLTransformation(), A3D.toPC(), B3D.toPC(), mousePos3D);
 				}
@@ -1439,14 +1443,14 @@ void qBroomDlg::onMouseMoved(int x, int y, Qt::MouseButtons button)
 				}
 				else
 				{
-					//we can't bound the displacement to the floor "porperly"
-					//but we can remove the normal component (the broom stays on the floor)
+					// we can't bound the displacement to the floor "porperly"
+					// but we can remove the normal component (the broom stays on the floor)
 					CCVector3d Zbox = broomTrans.getColumnAsVec3D(2);
-					broomDelta -= (broomDelta.dot(Zbox) * Zbox); //filter the Z component
+					broomDelta -= (broomDelta.dot(Zbox) * Zbox); // filter the Z component
 				}
 
 				m_hasLastMousePos3D = hasMousePos3D;
-				m_lastMousePos3D = mousePos3D;
+				m_lastMousePos3D    = mousePos3D;
 			}
 		}
 
@@ -1463,9 +1467,9 @@ void qBroomDlg::onMouseMoved(int x, int y, Qt::MouseButtons button)
 		else if (!hasAlreadyLostTrack)
 		{
 			lostTrackFrame->setVisible(true);
-			//stickCheckBox->setChecked(false);
+			// stickCheckBox->setChecked(false);
 
-			//auto-deselect the cloud
+			// auto-deselect the cloud
 			m_broomBox->setTempColor(ccColor::yellow);
 			m_broomSelected = false;
 		}
@@ -1478,24 +1482,24 @@ void qBroomDlg::onMouseMoved(int x, int y, Qt::MouseButtons button)
 
 bool qBroomDlg::moveBroom(ccGLMatrix& broomTrans, CCVector3d& broomDelta, bool stickToTheFloor) const
 {
-	//we will need the octree (intensively ;)
+	// we will need the octree (intensively ;)
 	ccOctree::Shared octree = m_cloud.ref ? m_cloud.ref->getOctree() : ccOctree::Shared(nullptr);
 	if (!octree)
 	{
 		assert(false);
 		return false;
 	}
-	
-	//broom dimensions
+
+	// broom dimensions
 	BroomDimensions broom;
 	getBroomDimensions(broom);
 
 	if (stickToTheFloor)
 	{
-		//make sure the broom doesn't go too far too fast
+		// make sure the broom doesn't go too far too fast
 		CCVector3d Xbox = broomTrans.getColumnAsVec3D(0);
 		CCVector3d Ybox = broomTrans.getColumnAsVec3D(1);
-		double dx = broomDelta.dot(Xbox);
+		double     dx   = broomDelta.dot(Xbox);
 		if (dx < -broom.length)
 			dx = -broom.length;
 		else if (dx > broom.length)
@@ -1510,24 +1514,24 @@ bool qBroomDlg::moveBroom(ccGLMatrix& broomTrans, CCVector3d& broomDelta, bool s
 		broomDelta = dx * Xbox + dy * Ybox;
 	}
 
-	//translate the broom
+	// translate the broom
 	broomTrans.setTranslation(broomTrans.getTranslationAsVec3D() + broomDelta.toPC());
 
 	if (stickToTheFloor)
 	{
-		//extract the points inside the broom
+		// extract the points inside the broom
 		CCCoreLib::DgmOctree::BoxNeighbourhood bn;
 		{
 			bn.dimensions = CCVector3(broom.length, broom.width, broom.thick);
 
 			bn.center = broomTrans.getTranslationAsVec3D();
-			bn.axes = new CCVector3[3];
+			bn.axes   = new CCVector3[3];
 			{
 				bn.axes[0] = broomTrans.getColumnAsVec3D(0);
 				bn.axes[1] = broomTrans.getColumnAsVec3D(1);
 				bn.axes[2] = broomTrans.getColumnAsVec3D(2);
 			}
-			bn.level = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(std::max(broom.length/5, std::max(broom.width, broom.thick)));
+			bn.level = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(std::max(broom.length / 5, std::max(broom.width, broom.thick)));
 		}
 
 		size_t count = octree->getPointsInBoxNeighbourhood(bn);
@@ -1535,7 +1539,7 @@ bool qBroomDlg::moveBroom(ccGLMatrix& broomTrans, CCVector3d& broomDelta, bool s
 		delete[] bn.axes;
 		bn.axes = nullptr;
 
-		//try to fit the box to the extracted points
+		// try to fit the box to the extracted points
 		if (count < 10)
 		{
 			ccLog::Warning("Failed to extract enough point inside the broom. Lost track.");
@@ -1544,11 +1548,11 @@ bool qBroomDlg::moveBroom(ccGLMatrix& broomTrans, CCVector3d& broomDelta, bool s
 		else
 		{
 			CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&bn.neighbours);
-			CCCoreLib::Neighbourhood n(&neighboursCloud);
-			const CCVector3* N = n.getLSPlaneNormal();
+			CCCoreLib::Neighbourhood           n(&neighboursCloud);
+			const CCVector3*                   N = n.getLSPlaneNormal();
 			if (N)
 			{
-				//extract the local coordinate system basis
+				// extract the local coordinate system basis
 				CCVector3 X = broomTrans.getColumnAsVec3D(0);
 				CCVector3 Z = *N;
 				Z.normalize();
@@ -1556,8 +1560,8 @@ bool qBroomDlg::moveBroom(ccGLMatrix& broomTrans, CCVector3d& broomDelta, bool s
 				Y.normalize();
 				X = Y.cross(Z);
 
-				CCVector3 O = bn.center; //the original center
-				O.z = n.getGravityCenter()->z;
+				CCVector3 O = bn.center; // the original center
+				O.z         = n.getGravityCenter()->z;
 
 				broomTrans = ccGLMatrix(X, Y, Z, O);
 			}
@@ -1572,9 +1576,9 @@ bool qBroomDlg::moveBroom(ccGLMatrix& broomTrans, CCVector3d& broomDelta, bool s
 	return true;
 }
 
-bool qBroomDlg::selectPoints(const ccGLMatrix& broomTrans, BroomDimensions* _broom/*=nullptr*/)
+bool qBroomDlg::selectPoints(const ccGLMatrix& broomTrans, BroomDimensions* _broom /*=nullptr*/)
 {
-	//we will need the octree (intensively ;)
+	// we will need the octree (intensively ;)
 	ccOctree::Shared octree = m_cloud.ref ? m_cloud.ref->getOctree() : ccOctree::Shared(nullptr);
 	if (!octree)
 	{
@@ -1585,7 +1589,7 @@ bool qBroomDlg::selectPoints(const ccGLMatrix& broomTrans, BroomDimensions* _bro
 	CCVector3 broomCenter = broomTrans.getTranslationAsVec3D();
 	CCVector3 broomNormal = broomTrans.getColumnAsVec3D(2);
 
-	//broom dimensions
+	// broom dimensions
 	BroomDimensions broom;
 	if (_broom)
 	{
@@ -1596,7 +1600,7 @@ bool qBroomDlg::selectPoints(const ccGLMatrix& broomTrans, BroomDimensions* _bro
 		getBroomDimensions(broom);
 	}
 
-	//extract the points inside the selection area
+	// extract the points inside the selection area
 	CCCoreLib::DgmOctree::BoxNeighbourhood bn;
 	{
 		CCVector3 centerShift(0, 0, 0);
@@ -1608,14 +1612,14 @@ bool qBroomDlg::selectPoints(const ccGLMatrix& broomTrans, BroomDimensions* _bro
 			break;
 
 		case ABOVE:
-		case ABOVE_AND_BELOW: //we start by ABOVE and we'll treat BELOW later
+		case ABOVE_AND_BELOW: // we start by ABOVE and we'll treat BELOW later
 			bn.dimensions = CCVector3(broom.length, broom.width, broom.height);
-			centerShift = ((broom.thick + broom.height) / 2) * broomNormal;
+			centerShift   = ((broom.thick + broom.height) / 2) * broomNormal;
 			break;
 
 		case BELOW:
 			bn.dimensions = CCVector3(broom.length, broom.width, broom.height);
-			centerShift = (-(broom.thick + broom.height) / 2) * broomNormal;
+			centerShift   = (-(broom.thick + broom.height) / 2) * broomNormal;
 			break;
 
 		default:
@@ -1624,22 +1628,22 @@ bool qBroomDlg::selectPoints(const ccGLMatrix& broomTrans, BroomDimensions* _bro
 		}
 
 		bn.center = broomCenter + centerShift;
-		bn.axes = new CCVector3[3];
+		bn.axes   = new CCVector3[3];
 		{
 			bn.axes[0] = broomTrans.getColumnAsVec3D(0);
 			bn.axes[1] = broomTrans.getColumnAsVec3D(1);
 			bn.axes[2] = broomNormal;
 		}
 
-		PointCoordinateType radius = std::max(bn.dimensions.x, std::max(bn.dimensions.y, bn.dimensions.z)) / 5; //emprirical ;)
-		bn.level = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(radius);
+		PointCoordinateType radius = std::max(bn.dimensions.x, std::max(bn.dimensions.y, bn.dimensions.z)) / 5; // emprirical ;)
+		bn.level                   = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(radius);
 	}
 
 	if (m_selectionMode == ABOVE_AND_BELOW)
 	{
-		//extract the first half
+		// extract the first half
 		octree->getPointsInBoxNeighbourhood(bn);
-		//and prepare the next one
+		// and prepare the next one
 		bn.center = broomCenter - ((broom.thick + broom.height) / 2) * broomNormal;
 	}
 
@@ -1650,10 +1654,10 @@ bool qBroomDlg::selectPoints(const ccGLMatrix& broomTrans, BroomDimensions* _bro
 
 	if (count)
 	{
-		//new selection
+		// new selection
 		addUndoStep(broomTrans);
 		size_t selectedCount = 0;
-		for (size_t i=0; i<count; ++i)
+		for (size_t i = 0; i < count; ++i)
 		{
 			if (selectPoint(bn.neighbours[i].pointIndex))
 			{
@@ -1661,13 +1665,13 @@ bool qBroomDlg::selectPoints(const ccGLMatrix& broomTrans, BroomDimensions* _bro
 			}
 		}
 
-		//if (selectedCount == 0)
+		// if (selectedCount == 0)
 		//{
 		//	//no point were selected! auto undo
 		//	undo(1);
-		//}
+		// }
 
-		m_cloud.ref->showSF(false); //just in case!
+		m_cloud.ref->showSF(false); // just in case!
 	}
 
 	return true;
@@ -1680,7 +1684,7 @@ void qBroomDlg::onButtonReleased()
 		assert(false);
 		return;
 	}
-		
+
 	m_glWindow->setInteractionMode(ccGLWindowInterface::MODE_TRANSFORM_CAMERA | ccGLWindowInterface::INTERACT_SIG_LB_CLICKED);
 
 	if (m_broomSelected)
@@ -1690,7 +1694,7 @@ void qBroomDlg::onButtonReleased()
 		m_glWindow->redraw();
 	}
 }
-	
+
 void qBroomDlg::updateSelectionBox()
 {
 	if (!m_selectionBox)
@@ -1700,33 +1704,33 @@ void qBroomDlg::updateSelectionBox()
 	}
 
 	PointCoordinateType length = static_cast<PointCoordinateType>(broomLengthDoubleSpinBox->value());
-	PointCoordinateType width = static_cast<PointCoordinateType>(broomWidthDoubleSpinBox->value() / 100.0) * length;
-	PointCoordinateType thick = static_cast<PointCoordinateType>(broomThicknessDoubleSpinBox->value() / 100.0) * length;
+	PointCoordinateType width  = static_cast<PointCoordinateType>(broomWidthDoubleSpinBox->value() / 100.0) * length;
+	PointCoordinateType thick  = static_cast<PointCoordinateType>(broomThicknessDoubleSpinBox->value() / 100.0) * length;
 
 	PointCoordinateType height = static_cast<PointCoordinateType>(cleanHeightDoubleSpinBox->value());
 
 	CCVector3 dims(length, width, 0);
-	CCVector3 shift(0,0,0);
+	CCVector3 shift(0, 0, 0);
 
 	switch (m_selectionMode)
 	{
 	case INSIDE:
-		//no need to do anything (simply hide the box)
+		// no need to do anything (simply hide the box)
 		m_selectionBox->setEnabled(false);
 		return;
 
 	case ABOVE:
-		dims.z = height;
-		shift.z = (thick + height)/2;
+		dims.z  = height;
+		shift.z = (thick + height) / 2;
 		break;
 
 	case BELOW:
-		dims.z = height;
-		shift.z = -(thick + height)/2;
+		dims.z  = height;
+		shift.z = -(thick + height) / 2;
 		break;
 
 	case ABOVE_AND_BELOW:
-		dims.z = 2*height + thick;
+		dims.z  = 2 * height + thick;
 		shift.z = 0;
 		break;
 
@@ -1765,13 +1769,13 @@ void qBroomDlg::updateBroomBox()
 	}
 
 	PointCoordinateType length = static_cast<PointCoordinateType>(broomLengthDoubleSpinBox->value());
-	PointCoordinateType width = static_cast<PointCoordinateType>(broomWidthDoubleSpinBox->value() / 100.0) * length;
-	PointCoordinateType thick = static_cast<PointCoordinateType>(broomThicknessDoubleSpinBox->value() / 100.0) * length;
+	PointCoordinateType width  = static_cast<PointCoordinateType>(broomWidthDoubleSpinBox->value() / 100.0) * length;
+	PointCoordinateType thick  = static_cast<PointCoordinateType>(broomThicknessDoubleSpinBox->value() / 100.0) * length;
 
 	CCVector3 dims(length, width, thick);
 	m_broomBox->setDimensions(dims);
 
-	m_broomBox->enableStippling(m_selectionMode == INSIDE); //the cleaning area box is already stippled!
+	m_broomBox->enableStippling(m_selectionMode == INSIDE); // the cleaning area box is already stippled!
 	m_broomBox->setTempColor(ccColor::yellow);
 }
 
@@ -1780,7 +1784,7 @@ void qBroomDlg::onDimensionChanged(double)
 	if (m_broomBox)
 	{
 		updateBroomBox();
-		//the selection area depends on the broom dimensions as well!
+		// the selection area depends on the broom dimensions as well!
 		updateSelectionBox();
 
 		if (m_glWindow && m_boxes->isEnabled())
@@ -1801,7 +1805,7 @@ bool qBroomDlg::selectPoint(unsigned index)
 	assert(index < m_selectionTable.size());
 	if (m_selectionTable[index] != 0)
 	{
-		//already selected
+		// already selected
 		return false;
 	}
 
@@ -1818,7 +1822,7 @@ uint32_t qBroomDlg::addUndoStep(const ccGLMatrix& broomPos)
 	applyPushButton->setEnabled(true);
 	validatePushButton->setEnabled(true);
 
-	//new selection
+	// new selection
 	try
 	{
 		m_undoPositions.push_back(broomPos);
@@ -1827,7 +1831,7 @@ uint32_t qBroomDlg::addUndoStep(const ccGLMatrix& broomPos)
 	}
 	catch (const std::bad_alloc&)
 	{
-		//not enough memory (undo will be broken)
+		// not enough memory (undo will be broken)
 	}
 
 	return static_cast<uint32_t>(m_undoPositions.size());
@@ -1835,8 +1839,8 @@ uint32_t qBroomDlg::addUndoStep(const ccGLMatrix& broomPos)
 
 void qBroomDlg::undo(uint32_t undoCount)
 {
-	if (	!m_cloud.ref
-		||	m_selectionTable.size() != m_cloud.ref->size())
+	if (!m_cloud.ref
+	    || m_selectionTable.size() != m_cloud.ref->size())
 	{
 		assert(false);
 		return;
@@ -1844,15 +1848,15 @@ void qBroomDlg::undo(uint32_t undoCount)
 
 	if (undoCount == 0 || m_undoPositions.empty())
 	{
-		//nothing to do
+		// nothing to do
 		return;
 	}
 
-	uint32_t newCursor = static_cast<uint32_t>(m_undoPositions.size());
+	uint32_t   newCursor = static_cast<uint32_t>(m_undoPositions.size());
 	ccGLMatrix newPosition;
 	if (newCursor <= undoCount)
 	{
-		newCursor = 0;
+		newCursor   = 0;
 		newPosition = m_undoPositions[0];
 	}
 	else
@@ -1861,13 +1865,13 @@ void qBroomDlg::undo(uint32_t undoCount)
 		newPosition = m_undoPositions[newCursor];
 	}
 
-	for (unsigned i=0; i<m_cloud.ref->size(); ++i)
+	for (unsigned i = 0; i < m_cloud.ref->size(); ++i)
 	{
 		if (m_selectionTable[i] > newCursor)
 		{
 			m_selectionTable[i] = 0;
 
-			//restore the point color
+			// restore the point color
 			if (m_cloud.colors)
 			{
 				m_cloud.ref->setPointColor(i, m_cloud.colors->getValue(i));
@@ -1896,7 +1900,7 @@ void qBroomDlg::undo(uint32_t undoCount)
 void qBroomDlg::cancel()
 {
 	setCloud(nullptr);
-	
+
 	reject();
 }
 
@@ -1918,15 +1922,15 @@ ccPointCloud* qBroomDlg::createSegmentedCloud(ccPointCloud* cloud, bool removeSe
 
 	if (!cloud || m_selectionTable.size() != cloud->size())
 	{
-		//we shouldn't be here ;)
+		// we shouldn't be here ;)
 		assert(false);
-		//nothing to do
+		// nothing to do
 		return nullptr;
 	}
 
 	unsigned selectedCount = 0;
 	{
-		for (unsigned i=0; i<cloud->size(); ++i)
+		for (unsigned i = 0; i < cloud->size(); ++i)
 			if (m_selectionTable[i] != 0)
 				++selectedCount;
 
@@ -1934,11 +1938,11 @@ ccPointCloud* qBroomDlg::createSegmentedCloud(ccPointCloud* cloud, bool removeSe
 		{
 			selectedCount = cloud->size() - selectedCount;
 		}
-		
+
 		if (selectedCount == 0)
 		{
 			assert(false);
-			//nothing to do
+			// nothing to do
 			accept();
 			return nullptr;
 		}
@@ -1953,11 +1957,11 @@ ccPointCloud* qBroomDlg::createSegmentedCloud(ccPointCloud* cloud, bool removeSe
 			return nullptr;
 		}
 
-		for (unsigned i=0; i<cloud->size(); ++i)
+		for (unsigned i = 0; i < cloud->size(); ++i)
 		{
-			if (	( removeSelected && m_selectionTable[i] == 0) //keep non selected
-				||	(!removeSelected && m_selectionTable[i] != 0) //keep selected
-				)
+			if ((removeSelected && m_selectionTable[i] == 0)     // keep non selected
+			    || (!removeSelected && m_selectionTable[i] != 0) // keep selected
+			)
 			{
 				selection.addPointIndex(i);
 			}
@@ -1984,13 +1988,13 @@ ccPointCloud* qBroomDlg::createSegmentedCloud(ccPointCloud* cloud, bool removeSe
 
 void qBroomDlg::apply()
 {
-	//save persistent settings
+	// save persistent settings
 	savePersistentSettings();
 
 	ccViewportParameters formerViewport = m_glWindow->getViewportParameters();
 	m_cloud.restore();
-	
-	bool error;
+
+	bool          error;
 	ccPointCloud* newCloud = createSegmentedCloud(m_cloud.ref, removeSelectedPointsCheckBox->isChecked(), error);
 	if (!newCloud)
 	{
@@ -1999,16 +2003,16 @@ void qBroomDlg::apply()
 			displayError(tr("Not enough memory"));
 		}
 		ccPointCloud* formerCloud = m_cloud.ref;
-		bool ownCloud = m_cloud.ownCloud;
-		m_cloud.ownCloud = false; //to prevent if from being deleted!
-		
+		bool          ownCloud    = m_cloud.ownCloud;
+		m_cloud.ownCloud          = false; // to prevent if from being deleted!
+
 		setCloud(nullptr, false);
 		setCloud(formerCloud, ownCloud, false);
 	}
 
 	setCloud(newCloud, true, false);
 
-	//restore the previous viewport
+	// restore the previous viewport
 	m_glWindow->setViewportParameters(formerViewport);
 	m_glWindow->redraw();
 }
@@ -2038,17 +2042,17 @@ void qBroomDlg::savePersistentSettings()
 
 void qBroomDlg::validate()
 {
-	//save persistent settings
+	// save persistent settings
 	savePersistentSettings();
 
-	//we don't want the cloud to be managed by the dialog anymore
+	// we don't want the cloud to be managed by the dialog anymore
 	ccPointCloud* cloud = m_cloud.ref;
 	assert(cloud);
-	bool ownCloud = m_cloud.ownCloud;
+	bool ownCloud    = m_cloud.ownCloud;
 	m_cloud.ownCloud = false;
 
 	setCloud(nullptr);
-	//m_cloud.restore(); //already called by setCloud
+	// m_cloud.restore(); //already called by setCloud
 
 	ccPointCloud* newCloud = nullptr;
 	if (!m_undoPositions.empty())

@@ -1,19 +1,19 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef Q_CANUPO_CLASSIF_DIALOG_HEADER
 #define Q_CANUPO_CLASSIF_DIALOG_HEADER
@@ -24,12 +24,12 @@ class ccMainAppInterface;
 class ccPointCloud;
 
 //! CANUPO plugin's classification dialog
-class qCanupoClassifDialog : public QDialog, public Ui::CanupoClassifDialog
+class qCanupoClassifDialog : public QDialog
+    , public Ui::CanupoClassifDialog
 {
 	Q_OBJECT
 
-public:
-
+  public:
 	//! Default constructor
 	qCanupoClassifDialog(ccPointCloud* cloud, ccMainAppInterface* app);
 
@@ -41,15 +41,15 @@ public:
 		SUBSAMPLED,
 		MSC_FILE
 	};
-	
+
 	//! Returns the selected source for core points
 	CORE_CLOUD_SOURCES getCorePointsCloudSource() const;
 
 	//! Get core points cloud (if any)
 	/** Returns either the input cloud (ORIGINAL) or the other cloud
-		specified in the dedicated combo box (OTHER).
-		It can also return a null pointer if the user has requested
-		sub-sampling (SUBSAMPLED) or MSC file (MSC_FILE).
+	    specified in the dedicated combo box (OTHER).
+	    It can also return a null pointer if the user has requested
+	    sub-sampling (SUBSAMPLED) or MSC file (MSC_FILE).
 	**/
 	ccPointCloud* getCorePointsCloud();
 
@@ -68,13 +68,11 @@ public:
 	//! Saves parameters to persistent settings
 	void saveParamsToPersistentSettings();
 
-protected:
-
+  protected:
 	void browseClassifierFile();
 	void browseMscFile();
 
-protected:
-
+  protected:
 	//! Gives access to the application (data-base, UI, etc.)
 	ccMainAppInterface* m_app;
 
@@ -82,4 +80,4 @@ protected:
 	ccPointCloud* m_cloud;
 };
 
-#endif //Q_CANUPO_CLASSIF_DIALOG_HEADER
+#endif // Q_CANUPO_CLASSIF_DIALOG_HEADER

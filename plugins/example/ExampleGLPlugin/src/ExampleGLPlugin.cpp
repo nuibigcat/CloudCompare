@@ -1,19 +1,19 @@
-//##########################################################################
-//#                                                                        #
-//#             CLOUDCOMPARE PLUGIN: ExampleGLPlugin                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #             CLOUDCOMPARE PLUGIN: ExampleGLPlugin                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
+// #                                                                        #
+// ##########################################################################
 
 // First:
 //	Replace all occurrences of 'ExampleGLPlugin' by your own plugin class name in this file.
@@ -31,18 +31,17 @@
 //	 "description" is used as a tootip if the plugin has actions and is displayed in the plugin dialog
 //	 "authors", "maintainers", and "references" show up in the plugin dialog as well
 
-#include "Bilateral.h"
-
 #include "ExampleGLPlugin.h"
 
+#include "Bilateral.h"
 
-ExampleGLPlugin::ExampleGLPlugin( QObject *parent )
-	: QObject( parent )
-	, ccGLPluginInterface( ":/CC/plugin/ExampleGLPlugin/info.json" )
+ExampleGLPlugin::ExampleGLPlugin(QObject* parent)
+    : QObject(parent)
+    , ccGLPluginInterface(":/CC/plugin/ExampleGLPlugin/info.json")
 {
 }
 
-ccGlFilter *ExampleGLPlugin::getFilter()
+ccGlFilter* ExampleGLPlugin::getFilter()
 {
 	return Example::getBilateral();
 }

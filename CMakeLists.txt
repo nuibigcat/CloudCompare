@@ -74,3 +74,99 @@ add_subdirectory( qCC )
 if( OPTION_BUILD_CCVIEWER )
 	add_subdirectory( ccViewer )
 endif()
+
+
+# Formatting stuff:
+# This part has to be here as it needs all targets listed below to be fully declared
+
+# The list of CMake targets for which we want to format/check formatting
+# Since CloudCompare's repo has some submodules for 3rd party dependencies
+# we use this mechanism to explicitly state what should be formatted, otherwise
+set(TARGETS_TO_FORMAT
+	CCAppCommon
+	CC_FBO_LIB
+	CCPluginAPI
+	CCPluginStub
+	QCC_DB_LIB
+	QCC_GL_LIB
+	QCC_IO_LIB
+
+	CloudCompare
+	ccViewer
+
+	# GL plugins
+	QEDL_GL_PLUGIN
+	QSSAO_GL_PLUGIN
+
+	# Example plugins
+	ExampleGLPlugin
+	ExampleIOPlugin
+	ExamplePlugin
+
+	# Standard plugins
+	QANIMATION_PLUGIN
+	QBROOM_PLUGIN
+	QCANUPO_PLUGIN
+	QCLOUDLAYERS_PLUGIN
+	QCOMPASS_PLUGIN
+	QCORK_PLUGIN
+	QCSF_PLUGIN
+	QFACETS_PLUGIN
+	QHOUGH_NORMALS_PLUGIN
+	QHPR_PLUGIN
+	QM3C2_PLUGIN
+	QMESH_BOOLEAN_PLUGIN
+	QPCL_PLUGIN
+	QPCV_PLUGIN
+	QPOISSON_RECON_PLUGIN
+	QRANSAC_SD_PLUGIN
+	QSRA_PLUGIN
+
+	# IO plugins
+	QCORE_IO_PLUGIN
+	QADDITIONAL_IO_PLUGIN
+	QCSV_MATRIX_IO_PLUGIN
+	QDRACO_IO_PLUGIN
+	QE57_IO_PLUGIN
+	QFBX_IO_PLUGIN
+	QLAS_FWF_IO_PLUGIN
+	QLAS_IO_PLUGIN
+	QPDAL_IO_PLUGIN
+	QPHOTOSCAN_IO_PLUGIN
+	QRDB_IO_PLUGIN
+	QSTEP_IO_PLUGIN
+)
+
+# The file path where we dump the list of source files to be formatted
+set(SOURCES_LIST_FILE "${CMAKE_BINARY_DIR}/sources_to_format.txt")
+file(REMOVE "${SOURCES_LIST_FILE}")
+foreach (TARGET ${TARGETS_TO_FORMAT})
+	if (NOT TARGET ${TARGET})
+		message(VERBOSE "${TARGET} does no exists, cannot be formatted")
+		continue()
+	endif ()
+
+	message(VERBOSE "${TARGET} sources added to format target")
+
+	get_target_property(TARGET_SOURCES ${TARGET} SOURCES)
+	list(FILTER TARGET_SOURCES INCLUDE REGEX ".*\.(cpp|hpp|cu|c|h)$")
+	# For some reasons this exclude is needed otherwise we do get .qrc files in the list
+	list(FILTER TARGET_SOURCES EXCLUDE REGEX ".*\.(qrc|rc)$")
+	# Files in the build dir are generated so don't bother formatting them
+	list(FILTER TARGET_SOURCES EXCLUDE REGEX "^${CMAKE_BINARY_DIR}/.*")
+	string(REPLACE ";" "\n" TARGET_SOURCES2 "${TARGET_SOURCES}")
+	file(APPEND "${SOURCES_LIST_FILE}" ${TARGET_SOURCES2})
+	file(APPEND "${SOURCES_LIST_FILE}" "\n")
+endforeach ()
+
+add_custom_target(
+	format
+	COMMAND clang-format --version
+	COMMAND clang-format -i "--files=${SOURCES_LIST_FILE}"
+)
+
+add_custom_target(
+	check-format
+	COMMAND clang-format --version
+	COMMAND clang-format --Werror --dry-run "--files=${SOURCES_LIST_FILE}"
+)

@@ -1,34 +1,34 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qPCL                        #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                         COPYRIGHT: Luca Penasa                         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qPCL                        #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                         COPYRIGHT: Luca Penasa                         #
+// #                                                                        #
+// ##########################################################################
 //
 #ifndef Q_PCL_PLUGIN_CC2SM_H
 #define Q_PCL_PLUGIN_CC2SM_H
 
-//Local
+// Local
 #include "PCLCloud.h"
 
-//PCL
+// PCL
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-//Qt
+// Qt
 #include <QStringList>
 
-//system
+// system
 #include <set>
 #include <string>
 
@@ -37,12 +37,12 @@ class ccPointCloud;
 //! CC to PCL cloud converter
 class cc2smReader
 {
-public:
+  public:
 	explicit cc2smReader(ccPointCloud* ccCloud);
 
 	//! Converts the ccPointCloud to a pcl::PointCloud2 cloud
 	/** This is useful for saving a ccPointCloud into a PCD file.
-		For pcl filters other methods are suggested (to get only the necessary bits of data)
+	    For pcl filters other methods are suggested (to get only the necessary bits of data)
 	**/
 	PCLCloud::Ptr getAsSM() const;
 	PCLCloud::Ptr getAsSM(bool xyz, bool normals, bool rgbColors, const QStringList& scalarFields) const;
@@ -55,8 +55,7 @@ public:
 
 	static std::string GetSimplifiedSFName(const QString& ccSfName);
 
-protected:
-
+  protected:
 	PCLCloud::Ptr getXYZ() const;
 	PCLCloud::Ptr getNormals() const;
 	PCLCloud::Ptr getColors() const;

@@ -1,53 +1,53 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qPCL                        #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                         COPYRIGHT: Luca Penasa                         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qPCL                        #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                         COPYRIGHT: Luca Penasa                         #
+// #                                                                        #
+// ##########################################################################
 //
 #include "NormalEstimation.h"
 
-//Local
-#include "dialogs/NormalEstimationDlg.h"
+// Local
 #include "../utils/PCLConv.h"
 #include "../utils/cc2sm.h"
 #include "../utils/sm2cc.h"
+#include "dialogs/NormalEstimationDlg.h"
 
-//PCL
+// PCL
 #include <pcl/features/impl/normal_3d_omp.hpp>
 
-//qCC_plugins
+// qCC_plugins
 #include <ccMainAppInterface.h>
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 
-//Qt
+// Qt
 #include <QMainWindow>
 
 template <typename PointInT, typename PointOutT>
-int ComputeNormals(	const typename pcl::PointCloud<PointInT>::Ptr incloud,
-					float radius,
-					bool useKnn, //true if use knn, false if radius search
-					typename pcl::PointCloud<PointOutT>& outcloud)
+int ComputeNormals(const typename pcl::PointCloud<PointInT>::Ptr incloud,
+                   float                                         radius,
+                   bool                                          useKnn, // true if use knn, false if radius search
+                   typename pcl::PointCloud<PointOutT>&          outcloud)
 {
 	typename pcl::NormalEstimationOMP<PointInT, PointOutT> normalEstimator;
-	
-	if (useKnn) //use knn
+
+	if (useKnn) // use knn
 	{
-		normalEstimator.setKSearch(static_cast<int>(radius)); //cast to int
+		normalEstimator.setKSearch(static_cast<int>(radius)); // cast to int
 	}
-	else //use radius search
+	else // use radius search
 	{
 		normalEstimator.setRadiusSearch(radius);
 	}
@@ -59,14 +59,14 @@ int ComputeNormals(	const typename pcl::PointCloud<PointInT>::Ptr incloud,
 }
 
 NormalEstimation::NormalEstimation()
-	: BaseFilter(FilterDescription(	"Estimate Normals",
-									"Estimate Normals and Curvature",
-									"Estimate Normals and Curvature for the selected entity",
-									":/toolbar/PclUtils/icons/normal_curvature.png"))
-	, m_radius(0)
-	, m_knn_radius(10)
-	, m_useKnn(false)
-	, m_overwrite_curvature(true)
+    : BaseFilter(FilterDescription("Estimate Normals",
+                                   "Estimate Normals and Curvature",
+                                   "Estimate Normals and Curvature for the selected entity",
+                                   ":/toolbar/PclUtils/icons/normal_curvature.png"))
+    , m_radius(0)
+    , m_knn_radius(10)
+    , m_useKnn(false)
+    , m_overwrite_curvature(true)
 {
 }
 
@@ -78,7 +78,7 @@ int NormalEstimation::getParametersFromDialog()
 {
 	NormalEstimationDialog dialog(m_app ? m_app->getMainWindow() : nullptr);
 
-	//initially these are invisible
+	// initially these are invisible
 	dialog.surfaceComboBox->setVisible(false);
 	dialog.searchSurfaceCheckBox->setVisible(false);
 
@@ -97,38 +97,38 @@ int NormalEstimation::getParametersFromDialog()
 		return CancelledByUser;
 	}
 
-	//fill in parameters from dialog
-	m_useKnn = dialog.useKnnCheckBox->isChecked();
+	// fill in parameters from dialog
+	m_useKnn              = dialog.useKnnCheckBox->isChecked();
 	m_overwrite_curvature = dialog.curvatureCheckBox->isChecked();
-	m_knn_radius = dialog.knnSpinBox->value();
-	m_radius = static_cast<float>(dialog.radiusDoubleSpinBox->value());
+	m_knn_radius          = dialog.knnSpinBox->value();
+	m_radius              = static_cast<float>(dialog.radiusDoubleSpinBox->value());
 
 	return Success;
 }
 
 int NormalEstimation::compute()
 {
-	//pointer to selected cloud
+	// pointer to selected cloud
 	ccPointCloud* cloud = getFirstSelectedEntityAsCCPointCloud();
 	if (!cloud)
 		return InvalidInput;
 
-	//get xyz as a PCL cloud
+	// get xyz as a PCL cloud
 	pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud = cc2smReader(cloud).getRawXYZ();
 	if (!xyzCloud)
 	{
 		return ComputationError;
 	}
 
-	//now compute the normals
+	// now compute the normals
 	pcl::PointCloud<pcl::PointNormal> rawCloudWithNormals;
-	int result = ComputeNormals<pcl::PointXYZ, pcl::PointNormal>(xyzCloud, m_useKnn ? m_knn_radius: m_radius, m_useKnn, rawCloudWithNormals);
+	int                               result = ComputeNormals<pcl::PointXYZ, pcl::PointNormal>(xyzCloud, m_useKnn ? m_knn_radius : m_radius, m_useKnn, rawCloudWithNormals);
 	if (result < 0)
 	{
 		return ComputationError;
 	}
 
-	//if we have normals delete them!
+	// if we have normals delete them!
 	if (!cloud->hasNormals())
 	{
 		if (!cloud->resizeTheNormsTable())
@@ -137,14 +137,14 @@ int NormalEstimation::compute()
 		}
 	}
 
-	//copy the notmals
+	// copy the notmals
 	unsigned pointCount = cloud->size();
 	for (unsigned i = 0; i < pointCount; ++i)
 	{
 		const pcl::PointNormal& point = rawCloudWithNormals[i];
-		CCVector3 N(static_cast<PointCoordinateType>(point.normal_x),
-					static_cast<PointCoordinateType>(point.normal_y),
-					static_cast<PointCoordinateType>(point.normal_z));
+		CCVector3               N(static_cast<PointCoordinateType>(point.normal_x),
+                    static_cast<PointCoordinateType>(point.normal_y),
+                    static_cast<PointCoordinateType>(point.normal_z));
 
 		cloud->setPointNormal(i, N);
 	}
@@ -159,4 +159,3 @@ int NormalEstimation::compute()
 
 	return Success;
 }
-

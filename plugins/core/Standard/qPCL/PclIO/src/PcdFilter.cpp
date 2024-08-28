@@ -1,65 +1,63 @@
-//##########################################################################
-//#                                                                        #
-//#                              CLOUDCOMPARE                              #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                    COPYRIGHT: CloudCompare project                     #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                              CLOUDCOMPARE                              #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                    COPYRIGHT: CloudCompare project                     #
+// #                                                                        #
+// ##########################################################################
 
 #include "PcdFilter.h"
 
-//PclUtils
-#include <sm2cc.h>
+// PclUtils
 #include <cc2sm.h>
+#include <sm2cc.h>
 
-//qCC_db
-#include <ccPointCloud.h>
+// qCC_db
 #include <ccGBLSensor.h>
 #include <ccHObjectCaster.h>
+#include <ccPointCloud.h>
 
-//Qt
+// Qt
 #include <QFileInfo>
 
-//Boost
+// Boost
 #include <boost/bind.hpp>
 #include <boost/make_shared.hpp>
 
-//System
-#include <iostream>
+// System
 #include <fstream>
+#include <iostream>
 
-//pcl
+// pcl
 #include <pcl/filters/passthrough.h>
 #include <pcl/io/pcd_io.h>
 
 PcdFilter::PcdFilter()
-    : FileIOFilter( {
-                    "_Point Cloud Library Filter",
-                    13.0f,	// priority
-                    QStringList{ "pcd" },
+    : FileIOFilter({"_Point Cloud Library Filter",
+                    13.0f, // priority
+                    QStringList{"pcd"},
                     "pcd",
-                    QStringList{ "Point Cloud Library cloud (*.pcd)" },
-                    QStringList{ "Point Cloud Library cloud (*.pcd)" },
-                    Import | Export
-                    } )
+                    QStringList{"Point Cloud Library cloud (*.pcd)"},
+                    QStringList{"Point Cloud Library cloud (*.pcd)"},
+                    Import | Export})
 {
 }
 
 bool PcdFilter::canSave(CC_CLASS_ENUM type, bool& multiple, bool& exclusive) const
 {
-	//only one cloud per file
+	// only one cloud per file
 	if (type == CC_TYPES::POINT_CLOUD)
 	{
-		multiple = false;
+		multiple  = false;
 		exclusive = true;
 		return true;
 	}
@@ -74,7 +72,7 @@ CC_FILE_ERROR PcdFilter::saveToFile(ccHObject* entity, const QString& filename, 
 		return CC_FERR_BAD_ARGUMENT;
 	}
 
-	//the cloud to save
+	// the cloud to save
 	ccPointCloud* ccCloud = ccHObjectCaster::ToPointCloud(entity);
 	if (!ccCloud)
 	{
@@ -82,14 +80,14 @@ CC_FILE_ERROR PcdFilter::saveToFile(ccHObject* entity, const QString& filename, 
 		return CC_FERR_BAD_ENTITY_TYPE;
 	}
 
-	//search for a sensor as child (we take the first if there are several of them)
+	// search for a sensor as child (we take the first if there are several of them)
 	ccSensor* sensor = nullptr;
 	{
 		for (unsigned i = 0; i < ccCloud->getChildrenNumber(); ++i)
 		{
 			ccHObject* child = ccCloud->getChild(i);
 
-			//try to cast to a ccSensor
+			// try to cast to a ccSensor
 			sensor = ccHObjectCaster::ToSensor(child);
 			if (sensor)
 			{
@@ -105,20 +103,20 @@ CC_FILE_ERROR PcdFilter::saveToFile(ccHObject* entity, const QString& filename, 
 		ccLog::Warning("[PCD] Can't restore the Global scale when exporting to PCD format");
 	}
 
-	Eigen::Vector4f pos = Eigen::Vector4f::Zero();
+	Eigen::Vector4f    pos = Eigen::Vector4f::Zero();
 	Eigen::Quaternionf ori = Eigen::Quaternionf::Identity();
-	PCLCloud::Ptr pclCloud;
+	PCLCloud::Ptr      pclCloud;
 
 	bool customShift = false;
 	if (sensor)
 	{
-		//get sensor data
+		// get sensor data
 		const ccGLMatrix& sensorMatrix = sensor->getRigidTransformation();
 
-		//translation
+		// translation
 		CCVector3 trans = sensorMatrix.getTranslationAsVec3D();
 
-		//check that the sensor is not too far from the points
+		// check that the sensor is not too far from the points
 		CCVector3 bbMin, bbMax;
 		ccCloud->getBoundingBox(bbMin, bbMax);
 		CCVector3 bbCenter = (bbMin + bbMax) / 2.0;
@@ -128,13 +126,13 @@ CC_FILE_ERROR PcdFilter::saveToFile(ccHObject* entity, const QString& filename, 
 			pos(1) = trans.y;
 			pos(2) = trans.z;
 
-			//rotation
+			// rotation
 			Eigen::Matrix3f eigrot;
 			for (int i = 0; i < 3; ++i)
 				for (int j = 0; j < 3; ++j)
 					eigrot(i, j) = sensorMatrix.getColumn(j)[i];
 
-			//now translate to a quaternion
+			// now translate to a quaternion
 			ori = Eigen::Quaternionf(eigrot);
 
 			// we have to project the cloud to the sensor CS
@@ -147,9 +145,9 @@ CC_FILE_ERROR PcdFilter::saveToFile(ccHObject* entity, const QString& filename, 
 
 			pclCloud = cc2smReader(tempCloud).getAsSM();
 
-			pos(0) = static_cast<float>(pos(0) - globalShift.x);
-			pos(1) = static_cast<float>(pos(1) - globalShift.y);
-			pos(2) = static_cast<float>(pos(2) - globalShift.z);
+			pos(0)      = static_cast<float>(pos(0) - globalShift.x);
+			pos(1)      = static_cast<float>(pos(1) - globalShift.y);
+			pos(2)      = static_cast<float>(pos(2) - globalShift.z);
 			customShift = true;
 
 			delete tempCloud;
@@ -169,7 +167,7 @@ CC_FILE_ERROR PcdFilter::saveToFile(ccHObject* entity, const QString& filename, 
 		pos(1) = -static_cast<float>(globalShift.y);
 		pos(2) = -static_cast<float>(globalShift.z);
 	}
-	
+
 	if (!pclCloud)
 	{
 		return CC_FERR_THIRD_PARTY_LIB_FAILURE;
@@ -177,9 +175,9 @@ CC_FILE_ERROR PcdFilter::saveToFile(ccHObject* entity, const QString& filename, 
 
 	if (ccCloud->size() == 0)
 	{
-		//Specific case: empty cloud (header only)
+		// Specific case: empty cloud (header only)
 		pcl::PCDWriter p;
-		QFile file(filename);
+		QFile          file(filename);
 		if (!file.open(QFile::WriteOnly | QFile::Truncate))
 			return CC_FERR_WRITING;
 		QTextStream stream(&file);
@@ -251,21 +249,21 @@ CC_FILE_ERROR PcdFilter::loadFile(const QString& filename, ccHObject& container,
 {
 	try
 	{
-		Eigen::Vector4f origin;
+		Eigen::Vector4f    origin;
 		Eigen::Quaternionf orientation;
-		int pcdVersion = 0;
-		int dataType = 0;
-		unsigned int cloudDataIndex = 0;
-		PCLCloud::Ptr inputCloud(new PCLCloud);
+		int                pcdVersion     = 0;
+		int                dataType       = 0;
+		unsigned int       cloudDataIndex = 0;
+		PCLCloud::Ptr      inputCloud(new PCLCloud);
 
-		//To avoid issues with local characters, we will open the file 'manually' and then provide the contents to PCL directly
+		// To avoid issues with local characters, we will open the file 'manually' and then provide the contents to PCL directly
 #ifdef _MSC_VER
 		std::ifstream ifs(filename.toStdWString(), std::wifstream::in | std::wifstream::binary);
 #else
 		std::ifstream ifs(filename.toStdString(), std::wifstream::in | std::wifstream::binary);
 #endif
 
-		//Load the input file
+		// Load the input file
 		pcl::PCDReader pcdReader;
 		if (pcdReader.readHeader(ifs, *inputCloud, origin, orientation, pcdVersion, dataType, cloudDataIndex) < 0)
 		{
@@ -284,7 +282,7 @@ CC_FILE_ERROR PcdFilter::loadFile(const QString& filename, ccHObject& container,
 		{
 			ccLog::Print(QObject::tr("[PCL] Reading ASCII PCD file..."));
 			ifs.seekg(cloudDataIndex, std::ios::beg);
-			if (pcdReader.readBodyASCII(ifs, *inputCloud, pcdVersion) < 0) //DGM: warning, toStdString doesn't preserve "local" characters
+			if (pcdReader.readBodyASCII(ifs, *inputCloud, pcdVersion) < 0) // DGM: warning, toStdString doesn't preserve "local" characters
 			{
 				return CC_FERR_THIRD_PARTY_LIB_FAILURE;
 			}
@@ -331,7 +329,7 @@ CC_FILE_ERROR PcdFilter::loadFile(const QString& filename, ccHObject& container,
 					grid->indexes.resize(static_cast<size_t>(grid->h) * grid->w);
 					grid->minValidIndex = 0;
 					grid->maxValidIndex = pointCount;
-					grid->validCount = pointCount;
+					grid->validCount    = pointCount;
 
 					for (size_t i = 0; i < pointCount; ++i)
 					{
@@ -350,7 +348,7 @@ CC_FILE_ERROR PcdFilter::loadFile(const QString& filename, ccHObject& container,
 						grid->h = static_cast<unsigned>(inputCloud->height);
 						grid->w = static_cast<unsigned>(inputCloud->width);
 						grid->indexes.resize(static_cast<size_t>(grid->h) * grid->w, -1);
-						grid->validCount = 0;
+						grid->validCount    = 0;
 						grid->minValidIndex = pointCount;
 						grid->maxValidIndex = 0;
 
@@ -398,9 +396,9 @@ CC_FILE_ERROR PcdFilter::loadFile(const QString& filename, ccHObject& container,
 			}
 		}
 
-		if (!inputCloud->is_dense) //data may contain NaNs
+		if (!inputCloud->is_dense) // data may contain NaNs
 		{
-			//we need to remove NaNs
+			// we need to remove NaNs
 			pcl::PassThrough<PCLCloud> passFilter;
 			passFilter.setInputCloud(inputCloud);
 			passFilter.filter(*inputCloud);
@@ -410,28 +408,34 @@ CC_FILE_ERROR PcdFilter::loadFile(const QString& filename, ccHObject& container,
 		ccGLMatrixd ccRot;
 		{
 			Eigen::Matrix3f eigRot = orientation.toRotationMatrix();
-			double* X = ccRot.getColumn(0);
-			double* Y = ccRot.getColumn(1);
-			double* Z = ccRot.getColumn(2);
+			double*         X      = ccRot.getColumn(0);
+			double*         Y      = ccRot.getColumn(1);
+			double*         Z      = ccRot.getColumn(2);
 
-			X[0] = eigRot(0, 0); X[1] = eigRot(1, 0); X[2] = eigRot(2, 0);
-			Y[0] = eigRot(0, 1); Y[1] = eigRot(1, 1); Y[2] = eigRot(2, 1);
-			Z[0] = eigRot(0, 2); Z[1] = eigRot(1, 2); Z[2] = eigRot(2, 2);
+			X[0] = eigRot(0, 0);
+			X[1] = eigRot(1, 0);
+			X[2] = eigRot(2, 0);
+			Y[0] = eigRot(0, 1);
+			Y[1] = eigRot(1, 1);
+			Y[2] = eigRot(2, 1);
+			Z[0] = eigRot(0, 2);
+			Z[1] = eigRot(1, 2);
+			Z[2] = eigRot(2, 2);
 
 			ccRot.getColumn(3)[3] = 1.0;
 			ccRot.setTranslation(origin.data());
 		}
 
-		//convert to CC cloud
-		// DGM: it appears that the sensor orientation/translation has to be applied manually to the points
-		// (probably because they just correspond to the raw scan grid in the general case)
+		// convert to CC cloud
+		//  DGM: it appears that the sensor orientation/translation has to be applied manually to the points
+		//  (probably because they just correspond to the raw scan grid in the general case)
 		ccPointCloud* ccCloud = pcl2cc::Convert(*inputCloud, &ccRot, &parameters);
 		if (!ccCloud)
 		{
 			ccLog::Warning("[PCL] An error occurred while converting PCD cloud to CloudCompare cloud!");
 			return CC_FERR_CONSOLE_ERROR;
 		}
-		
+
 		ccCloud->setName(QStringLiteral("unnamed"));
 		if (grid)
 		{
@@ -445,7 +449,7 @@ CC_FILE_ERROR PcdFilter::loadFile(const QString& filename, ccHObject& container,
 			}
 		}
 
-		//now we can construct a ccGBLSensor
+		// now we can construct a ccGBLSensor
 		{
 			if (grid)
 			{
@@ -457,12 +461,12 @@ CC_FILE_ERROR PcdFilter::loadFile(const QString& filename, ccHObject& container,
 			sensor->setYawStep(static_cast<PointCoordinateType>(0.05));
 			sensor->setPitchStep(static_cast<PointCoordinateType>(0.05));
 			sensor->setVisible(true);
-			//uncertainty to some default
+			// uncertainty to some default
 			sensor->setUncertainty(static_cast<PointCoordinateType>(0.01));
-			//graphic scale
+			// graphic scale
 			sensor->setGraphicScale(ccCloud->getOwnBB().getDiagNorm() / 10);
 
-			//Compute parameters
+			// Compute parameters
 			ccGenericPointCloud* pc = ccHObjectCaster::ToGenericPointCloud(ccCloud);
 			sensor->computeAutoParameters(pc);
 

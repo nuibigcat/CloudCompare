@@ -1,29 +1,30 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qPCV                        #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                  COPYRIGHT: Daniel Girardeau-Montaut                   #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qPCV                        #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                  COPYRIGHT: Daniel Girardeau-Montaut                   #
+// #                                                                        #
+// ##########################################################################
 
 #include "qPCV.h"
-#include "ccPcvDlg.h"
-#include "PCVCommand.h"
 
-//CCCoreLib
+#include "PCVCommand.h"
+#include "ccPcvDlg.h"
+
+// CCCoreLib
 #include <PCV.h>
 #include <ScalarField.h>
 
-//qCC_db
+// qCC_db
 #include <ccGenericMesh.h>
 #include <ccGenericPointCloud.h>
 #include <ccHObjectCaster.h>
@@ -31,22 +32,21 @@
 #include <ccProgressDialog.h>
 #include <ccScalarField.h>
 
-//Qt
+// Qt
 #include <QMainWindow>
 #include <QProgressBar>
 
-//persistent settings during a single session
-static bool s_firstLaunch				= true;
-static int s_raysSpinBoxValue			= 256;
-static int s_resSpinBoxValue			= 1024;
-static bool s_mode180CheckBoxState		= true;
-static bool s_closedMeshCheckBoxState	= false;
+// persistent settings during a single session
+static bool s_firstLaunch             = true;
+static int  s_raysSpinBoxValue        = 256;
+static int  s_resSpinBoxValue         = 1024;
+static bool s_mode180CheckBoxState    = true;
+static bool s_closedMeshCheckBoxState = false;
 
-
-qPCV::qPCV(QObject* parent/*=nullptr*/)
-	: QObject(parent)
-	, ccStdPluginInterface(":/CC/plugin/qPCV/info.json")
-	, m_action(nullptr)
+qPCV::qPCV(QObject* parent /*=nullptr*/)
+    : QObject(parent)
+    , ccStdPluginInterface(":/CC/plugin/qPCV/info.json")
+    , m_action(nullptr)
 {
 }
 
@@ -67,19 +67,19 @@ void qPCV::onNewSelection(const ccHObject::Container& selectedEntities)
 	}
 }
 
-QList<QAction *> qPCV::getActions()
+QList<QAction*> qPCV::getActions()
 {
-	//default action
+	// default action
 	if (!m_action)
 	{
-		m_action = new QAction(getName(),this);
+		m_action = new QAction(getName(), this);
 		m_action->setToolTip(getDescription());
 		m_action->setIcon(getIcon());
 
 		connect(m_action, &QAction::triggered, this, &qPCV::doAction);
 	}
 
-	return QList<QAction *>{ m_action };
+	return QList<QAction*>{m_action};
 }
 
 void qPCV::doAction()
@@ -91,7 +91,7 @@ void qPCV::doAction()
 	const ccHObject::Container& selectedEntities = m_app->getSelectedEntities();
 
 	ccHObject::Container candidates;
-	bool hasMeshes = false;
+	bool                 hasMeshes = false;
 	for (ccHObject* obj : selectedEntities)
 	{
 		if (!obj)
@@ -99,10 +99,10 @@ void qPCV::doAction()
 			assert(false);
 			continue;
 		}
-		
+
 		if (obj->isA(CC_TYPES::POINT_CLOUD))
 		{
-			//we need a real point cloud
+			// we need a real point cloud
 			candidates.push_back(obj);
 		}
 		else if (obj->isKindOf(CC_TYPES::MESH))
@@ -110,7 +110,7 @@ void qPCV::doAction()
 			ccGenericMesh* mesh = ccHObjectCaster::ToGenericMesh(obj);
 			if (mesh->getAssociatedCloud() && mesh->getAssociatedCloud()->isA(CC_TYPES::POINT_CLOUD))
 			{
-				//we need a mesh with a real point cloud
+				// we need a mesh with a real point cloud
 				candidates.push_back(obj);
 				hasMeshes = true;
 			}
@@ -119,7 +119,7 @@ void qPCV::doAction()
 
 	ccPcvDlg dlg(m_app->getMainWindow());
 
-	//restore previous dialog state
+	// restore previous dialog state
 	if (!s_firstLaunch)
 	{
 		dlg.raysSpinBox->setValue(s_raysSpinBoxValue);
@@ -128,21 +128,21 @@ void qPCV::doAction()
 		dlg.closedMeshCheckBox->setChecked(s_closedMeshCheckBoxState);
 	}
 
-	dlg.closedMeshCheckBox->setEnabled(hasMeshes); //for meshes only
+	dlg.closedMeshCheckBox->setEnabled(hasMeshes); // for meshes only
 
-	//for using clouds normals as rays
+	// for using clouds normals as rays
 	std::vector<ccGenericPointCloud*> cloudsWithNormals;
-	ccHObject* root = m_app->dbRootObject();
+	ccHObject*                        root = m_app->dbRootObject();
 	if (root)
 	{
 		ccHObject::Container clouds;
 		root->filterChildren(clouds, true, CC_TYPES::POINT_CLOUD);
-		
-		for (auto & pointCloud : clouds)
+
+		for (auto& pointCloud : clouds)
 		{
-			//we keep only clouds with normals
-			ccGenericPointCloud* cloud = ccHObjectCaster::ToGenericPointCloud( pointCloud );
-			
+			// we keep only clouds with normals
+			ccGenericPointCloud* cloud = ccHObjectCaster::ToGenericPointCloud(pointCloud);
+
 			if (cloud && cloud->hasNormals())
 			{
 				cloudsWithNormals.push_back(cloud);
@@ -156,7 +156,7 @@ void qPCV::doAction()
 			}
 		}
 	}
-	
+
 	if (cloudsWithNormals.empty())
 	{
 		dlg.useCloudRadioButton->setEnabled(false);
@@ -167,26 +167,26 @@ void qPCV::doAction()
 		return;
 	}
 
-	//save dialog state
-	s_firstLaunch				= false;
-	s_raysSpinBoxValue			= dlg.raysSpinBox->value();
-	s_mode180CheckBoxState		= dlg.mode180CheckBox->isChecked();
-	s_resSpinBoxValue			= dlg.resSpinBox->value();
-	s_closedMeshCheckBoxState	= dlg.closedMeshCheckBox->isChecked();
+	// save dialog state
+	s_firstLaunch             = false;
+	s_raysSpinBoxValue        = dlg.raysSpinBox->value();
+	s_mode180CheckBoxState    = dlg.mode180CheckBox->isChecked();
+	s_resSpinBoxValue         = dlg.resSpinBox->value();
+	s_closedMeshCheckBoxState = dlg.closedMeshCheckBox->isChecked();
 
-	unsigned rayCount = dlg.raysSpinBox->value();
-	unsigned resolution = dlg.resSpinBox->value();
-	bool meshIsClosed = (hasMeshes ? dlg.closedMeshCheckBox->isChecked() : false);
-	bool mode360 = !dlg.mode180CheckBox->isChecked();
+	unsigned rayCount     = dlg.raysSpinBox->value();
+	unsigned resolution   = dlg.resSpinBox->value();
+	bool     meshIsClosed = (hasMeshes ? dlg.closedMeshCheckBox->isChecked() : false);
+	bool     mode360      = !dlg.mode180CheckBox->isChecked();
 
-	//PCV type ShadeVis
+	// PCV type ShadeVis
 	std::vector<CCVector3> rays;
 	if (!cloudsWithNormals.empty() && dlg.useCloudRadioButton->isChecked())
 	{
-		//Version with cloud normals as light rays
+		// Version with cloud normals as light rays
 		assert(dlg.cloudsComboBox->currentIndex() < static_cast<int>(cloudsWithNormals.size()));
-		ccGenericPointCloud* pc = cloudsWithNormals[dlg.cloudsComboBox->currentIndex()];
-		unsigned count = pc->size();
+		ccGenericPointCloud* pc    = cloudsWithNormals[dlg.cloudsComboBox->currentIndex()];
+		unsigned             count = pc->size();
 		try
 		{
 			rays.resize(count);
@@ -203,7 +203,7 @@ void qPCV::doAction()
 	}
 	else
 	{
-		//generates light directions
+		// generates light directions
 		if (!PCV::GenerateRays(rayCount, rays, mode360))
 		{
 			m_app->dispToConsole("Failed to generate the set of rays", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -225,9 +225,9 @@ void qPCV::doAction()
 
 	pcvProgressCb.close();
 
-	//currently selected entities parameters may have changed!
+	// currently selected entities parameters may have changed!
 	m_app->updateUI();
-	//currently selected entities appearance may have changed!
+	// currently selected entities appearance may have changed!
 	m_app->refreshAll();
 }
 

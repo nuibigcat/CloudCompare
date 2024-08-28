@@ -1,73 +1,74 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qHPR                        #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                  COPYRIGHT: Daniel Girardeau-Montaut                   #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qHPR                        #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                  COPYRIGHT: Daniel Girardeau-Montaut                   #
+// #                                                                        #
+// ##########################################################################
 
 #include "qHPR.h"
+
 #include "ccHprDlg.h"
 
-//Qt
-#include <QtGui>
+// Qt
 #include <QMainWindow>
+#include <QtGui>
 
-//qCC_db
-#include <ccPointCloud.h>
+// qCC_db
+#include <cc2DViewportObject.h>
 #include <ccOctree.h>
 #include <ccOctreeProxy.h>
+#include <ccPointCloud.h>
 #include <ccProgressDialog.h>
-#include <cc2DViewportObject.h>
 
-//qCC
+// qCC
 #include <ccGLWindowInterface.h>
 
-//CCCoreLib
+// CCCoreLib
 #include <CloudSamplingTools.h>
 
-//Qhull
+// Qhull
 extern "C"
 {
 #include <qhull_a.h>
 }
 
 qHPR::qHPR(QObject* parent)
-	: QObject(parent)
-	, ccStdPluginInterface(":/CC/plugin/qHPR/info.json")
-	, m_action(nullptr)
+    : QObject(parent)
+    , ccStdPluginInterface(":/CC/plugin/qHPR/info.json")
+    , m_action(nullptr)
 {
 }
 
-QList<QAction *> qHPR::getActions()
+QList<QAction*> qHPR::getActions()
 {
-	//default action
+	// default action
 	if (!m_action)
 	{
 		m_action = new QAction(getName(), this);
 		m_action->setToolTip(getDescription());
 		m_action->setIcon(getIcon());
-		//connect signal
+		// connect signal
 		connect(m_action, &QAction::triggered, this, &qHPR::doAction);
 	}
 
-	return QList<QAction *>{ m_action };
+	return QList<QAction*>{m_action};
 }
 
 void qHPR::onNewSelection(const ccHObject::Container& selectedEntities)
 {
 	if (m_action)
 	{
-		//a single point cloud must be selected
+		// a single point cloud must be selected
 		m_action->setEnabled(selectedEntities.size() == 1 && selectedEntities.front()->isA(CC_TYPES::POINT_CLOUD));
 	}
 }
@@ -80,13 +81,13 @@ CCCoreLib::ReferenceCloud* qHPR::removeHiddenPoints(CCCoreLib::GenericIndexedClo
 	if (nbPoints == 0)
 		return nullptr;
 
-	//less than 4 points? no need for calculation, we return the whole cloud
+	// less than 4 points? no need for calculation, we return the whole cloud
 	if (nbPoints < 4)
 	{
 		CCCoreLib::ReferenceCloud* visiblePoints = new CCCoreLib::ReferenceCloud(theCloud);
-		if (!visiblePoints->addPointIndex(0, nbPoints)) //well even for less than 4 points we never know ;)
+		if (!visiblePoints->addPointIndex(0, nbPoints)) // well even for less than 4 points we never know ;)
 		{
-			//not enough memory!
+			// not enough memory!
 			delete visiblePoints;
 			visiblePoints = nullptr;
 		}
@@ -95,7 +96,7 @@ CCCoreLib::ReferenceCloud* qHPR::removeHiddenPoints(CCCoreLib::GenericIndexedClo
 
 	double maxRadius = 0;
 
-	//convert point cloud to an array of double triplets (for qHull)
+	// convert point cloud to an array of double triplets (for qHull)
 	coordT* pt_array = new coordT[(nbPoints + 1) * 3];
 	{
 		coordT* _pt_array = pt_array;
@@ -107,13 +108,13 @@ CCCoreLib::ReferenceCloud* qHPR::removeHiddenPoints(CCCoreLib::GenericIndexedClo
 			*_pt_array++ = static_cast<coordT>(P.y);
 			*_pt_array++ = static_cast<coordT>(P.z);
 
-			//we keep track of the highest 'radius'
+			// we keep track of the highest 'radius'
 			double r2 = P.norm2();
 			if (maxRadius < r2)
 				maxRadius = r2;
 		}
 
-		//we add the view point (Cf. HPR)
+		// we add the view point (Cf. HPR)
 		*_pt_array++ = 0;
 		*_pt_array++ = 0;
 		*_pt_array++ = 0;
@@ -121,7 +122,7 @@ CCCoreLib::ReferenceCloud* qHPR::removeHiddenPoints(CCCoreLib::GenericIndexedClo
 		maxRadius = sqrt(maxRadius);
 	}
 
-	//apply spherical flipping
+	// apply spherical flipping
 	{
 		maxRadius *= pow(10.0, fParam) * 2;
 
@@ -137,7 +138,7 @@ CCCoreLib::ReferenceCloud* qHPR::removeHiddenPoints(CCCoreLib::GenericIndexedClo
 		}
 	}
 
-	//array to flag points on the convex hull
+	// array to flag points on the convex hull
 	std::vector<bool> pointBelongsToCvxHull;
 
 	static char qHullCommand[] = "qhull QJ Qci";
@@ -149,18 +150,18 @@ CCCoreLib::ReferenceCloud* qHPR::removeHiddenPoints(CCCoreLib::GenericIndexedClo
 		}
 		catch (const std::bad_alloc&)
 		{
-			//not enough memory!
+			// not enough memory!
 			delete[] pt_array;
 			return nullptr;
 		}
 
-		vertexT *vertex = nullptr;
-		vertexT **vertexp = nullptr;
-		facetT *facet = nullptr;
+		vertexT*  vertex  = nullptr;
+		vertexT** vertexp = nullptr;
+		facetT*   facet   = nullptr;
 
 		FORALLfacets
 		{
-			//if (!facet->simplicial)
+			// if (!facet->simplicial)
 			//	error("convhulln: non-simplicial facet"); // should never happen with QJ
 
 			setT* vertices = qh_facet3vertex(facet);
@@ -176,15 +177,15 @@ CCCoreLib::ReferenceCloud* qHPR::removeHiddenPoints(CCCoreLib::GenericIndexedClo
 	pt_array = nullptr;
 
 	qh_freeqhull(!qh_ALL);
-	//free long memory
+	// free long memory
 	int curlong = 0;
 	int totlong = 0;
 	qh_memfreeshort(&curlong, &totlong);
-	//free short memory and memory allocator
+	// free short memory and memory allocator
 
 	if (!pointBelongsToCvxHull.empty())
 	{
-		//compute the number of points belonging to the convex hull
+		// compute the number of points belonging to the convex hull
 		unsigned cvxHullSize = 0;
 		{
 			for (unsigned i = 0; i < nbPoints; ++i)
@@ -197,12 +198,11 @@ CCCoreLib::ReferenceCloud* qHPR::removeHiddenPoints(CCCoreLib::GenericIndexedClo
 		{
 			for (unsigned i = 0; i < nbPoints; ++i)
 				if (pointBelongsToCvxHull[i])
-					visiblePoints->addPointIndex(i); //can't fail, see above
+					visiblePoints->addPointIndex(i); // can't fail, see above
 
 			return visiblePoints;
-
 		}
-		else //not enough memory
+		else // not enough memory
 		{
 			delete visiblePoints;
 			visiblePoints = nullptr;
@@ -235,7 +235,7 @@ void qHPR::doAction()
 		return;
 	}
 
-	//display parameters
+	// display parameters
 	const ccViewportParameters& params = win->getViewportParameters();
 	if (!params.perspectiveView)
 	{
@@ -246,14 +246,14 @@ void qHPR::doAction()
 	if (!dlg.exec())
 		return;
 
-	//progress dialog
+	// progress dialog
 	ccProgressDialog progressCb(false, m_app->getMainWindow());
 
-	//unique parameter: the octree subdivision level
+	// unique parameter: the octree subdivision level
 	int octreeLevel = dlg.octreeLevelSpinBox->value();
 	assert(octreeLevel >= 0 && octreeLevel <= CCCoreLib::DgmOctree::MAX_OCTREE_LEVEL);
 
-	//compute octree if cloud hasn't any
+	// compute octree if cloud hasn't any
 	ccOctree::Shared theOctree = cloud->getOctree();
 	if (!theOctree)
 	{
@@ -278,17 +278,17 @@ void qHPR::doAction()
 		viewPoint = params.getPivotPoint() + PC;
 	}
 
-	//HPR
+	// HPR
 	QScopedPointer<CCCoreLib::ReferenceCloud> visibleCells;
 	{
 		QElapsedTimer eTimer;
 		eTimer.start();
 
-		QScopedPointer<CCCoreLib::ReferenceCloud> theCellCenters( CCCoreLib::CloudSamplingTools::subsampleCloudWithOctreeAtLevel(	cloud,
-																											static_cast<unsigned char>(octreeLevel),
-																											CCCoreLib::CloudSamplingTools::NEAREST_POINT_TO_CELL_CENTER,
-																											&progressCb,
-																											theOctree.data()) );
+		QScopedPointer<CCCoreLib::ReferenceCloud> theCellCenters(CCCoreLib::CloudSamplingTools::subsampleCloudWithOctreeAtLevel(cloud,
+		                                                                                                                        static_cast<unsigned char>(octreeLevel),
+		                                                                                                                        CCCoreLib::CloudSamplingTools::NEAREST_POINT_TO_CELL_CENTER,
+		                                                                                                                        &progressCb,
+		                                                                                                                        theOctree.data()));
 		if (!theCellCenters)
 		{
 			m_app->dispToConsole("Error while simplifying point cloud with octree!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -299,18 +299,18 @@ void qHPR::doAction()
 
 		m_app->dispToConsole(QString("[HPR] Cells: %1 - Time: %2 s").arg(theCellCenters->size()).arg(eTimer.elapsed() / 1.0e3));
 
-		//warning: after this point, visibleCells can't be used anymore as a
-		//normal cloud (as it's 'associated cloud' has been deleted).
-		//Only its indexes are valid! (they are corresponding to octree cells)
+		// warning: after this point, visibleCells can't be used anymore as a
+		// normal cloud (as it's 'associated cloud' has been deleted).
+		// Only its indexes are valid! (they are corresponding to octree cells)
 	}
 
 	if (visibleCells)
 	{
-		//DGM: we generate a new cloud now, instead of playing with the points visiblity! (too confusing for the user)
+		// DGM: we generate a new cloud now, instead of playing with the points visiblity! (too confusing for the user)
 		/*if (!cloud->isVisibilityTableInstantiated() && !cloud->resetVisibilityArray())
 		{
-			m_app->dispToConsole("Visibility array allocation failed! (Not enough memory?)",ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-			return;
+		    m_app->dispToConsole("Visibility array allocation failed! (Not enough memory?)",ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		    return;
 		}
 
 		ccPointCloud::VisibilityTableType* pointsVisibility = cloud->getTheVisibilityArray();
@@ -332,16 +332,16 @@ void qHPR::doAction()
 
 		for (unsigned i = 0; i < visibleCellsCount; ++i)
 		{
-			//cell index
+			// cell index
 			unsigned index = visibleCells->getPointGlobalIndex(i);
 
-			//points in this cell...
+			// points in this cell...
 			CCCoreLib::ReferenceCloud Yk(theOctree->associatedCloud());
 			theOctree->getPointsInCellByCellIndex(&Yk, cellIndexes[index], static_cast<unsigned char>(octreeLevel));
 			//...are all visible
 			/*unsigned count = Yk.size();
 			for (unsigned j=0;j<count;++j)
-				pointsVisibility->setValue(Yk.getPointGlobalIndex(j),POINT_VISIBLE);
+			    pointsVisibility->setValue(Yk.getPointGlobalIndex(j),POINT_VISIBLE);
 			visiblePointCount += count;
 			*/
 			if (!visiblePoints.add(Yk))
@@ -361,7 +361,7 @@ void qHPR::doAction()
 		}
 		else
 		{
-			//create cloud from visibility selection
+			// create cloud from visibility selection
 			ccPointCloud* newCloud = cloud->partialClone(&visiblePoints);
 			if (newCloud)
 			{
@@ -370,7 +370,7 @@ void qHPR::doAction()
 				newCloud->setName(cloud->getName() + QString(".visible_points"));
 				cloud->setEnabled(false);
 
-				//add associated viewport object
+				// add associated viewport object
 				cc2DViewportObject* viewportObject = new cc2DViewportObject(QString("Viewport"));
 				viewportObject->setParameters(params);
 				newCloud->addChild(viewportObject);
@@ -385,6 +385,6 @@ void qHPR::doAction()
 		}
 	}
 
-	//currently selected entities appearance may have changed!
+	// currently selected entities appearance may have changed!
 	m_app->refreshAll();
 }

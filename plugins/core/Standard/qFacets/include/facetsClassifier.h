@@ -1,43 +1,42 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qFacets                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                      COPYRIGHT: Thomas Dewez, BRGM                     #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qFacets                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                      COPYRIGHT: Thomas Dewez, BRGM                     #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef QFACET_FACETS_CLASSIFIER_HEADER
 #define QFACET_FACETS_CLASSIFIER_HEADER
 
-//Qt
-#include <QProgressDialog>
+// Qt
 #include <QApplication>
+#include <QProgressDialog>
 
-//qCC_db
+// qCC_db
 #include "ccFacet.h"
 #include "ccPointCloud.h"
 #include "ccPolyline.h"
 
-static const QString s_OriFamilyKey = "orientation.family.index";
+static const QString s_OriFamilyKey     = "orientation.family.index";
 static const QString s_OriFamilyNameKey = "orientation.family.name";
-static const QString s_OriSubFamilyKey = "orientation.subfamily.index";
+static const QString s_OriSubFamilyKey  = "orientation.subfamily.index";
 
 // default ratio for the 'dark' version of a color
 const double c_darkColorRatio = 0.25;
 
 class FacetsClassifier
 {
-public:
-
+  public:
 	//! Set of facets (pointers to)
 	typedef std::vector<ccFacet*> FacetSet;
 
@@ -50,24 +49,24 @@ public:
 
 	//! Generates a given sub-family color
 	static void GenerateSubfamilyColor(ccColor::Rgb& col,
-		double dip,
-		double dipDir,
-		unsigned subFamilyIndex,
-		unsigned subFamilyCount,
-		ccColor::Rgb* darkCol = 0)
+	                                   double        dip,
+	                                   double        dipDir,
+	                                   unsigned      subFamilyIndex,
+	                                   unsigned      subFamilyCount,
+	                                   ccColor::Rgb* darkCol = 0)
 	{
-		//convert dip & dip dir. to HSV
+		// convert dip & dip dir. to HSV
 		double H = dipDir;
-		if (H == 360.0) //H is in [0;360[
+		if (H == 360.0) // H is in [0;360[
 			H = 0;
-		double S = dip / 90.0; //S is in [0;1]
+		double S = dip / 90.0; // S is in [0;1]
 		double L = 0.5;
 
 		if (subFamilyCount > 1)
 		{
 			assert(subFamilyIndex >= 1);
-			//FIXME: how could we do this?!
-			//V = 0.5 + 0.5 * static_cast<double>(subFamilyIndex-1)/static_cast<double>(subFamilyCount-1);
+			// FIXME: how could we do this?!
+			// V = 0.5 + 0.5 * static_cast<double>(subFamilyIndex-1)/static_cast<double>(subFamilyCount-1);
 		}
 
 		col = ccColor::Convert::hsl2rgb(H, S, L);
@@ -77,12 +76,12 @@ public:
 		}
 	}
 
-	static void GetFamilyIndexes(ccFacet* facet,
-		unsigned dSteps,
-		unsigned ddSteps,
-		double angularStep_deg,
-		unsigned& iDip,
-		unsigned& iDipDir)
+	static void GetFamilyIndexes(ccFacet*  facet,
+	                             unsigned  dSteps,
+	                             unsigned  ddSteps,
+	                             double    angularStep_deg,
+	                             unsigned& iDip,
+	                             unsigned& iDipDir)
 	{
 		assert(facet);
 		CCVector3 N = facet->getNormal();
@@ -90,17 +89,17 @@ public:
 		PointCoordinateType dipDir = 0, dip = 0;
 		ccNormalVectors::ConvertNormalToDipAndDipDir(N, dip, dipDir);
 
-		iDip = static_cast<unsigned>(dip / angularStep_deg); //static_cast is equivalent to floor if value >= 0
+		iDip = static_cast<unsigned>(dip / angularStep_deg); // static_cast is equivalent to floor if value >= 0
 		if (iDip == dSteps)
 			iDip--;
-		iDipDir = static_cast<unsigned>(dipDir / angularStep_deg); //static_cast is equivalent to floor if value >= 0
+		iDipDir = static_cast<unsigned>(dipDir / angularStep_deg); // static_cast is equivalent to floor if value >= 0
 		if (iDipDir == ddSteps)
 			iDipDir--;
 	}
 
 	static inline QString GetFamilyName(double dip, double dipDir, double angularStep_deg)
 	{
-		//return QString("(%1+/-%2) / (%3+/-%4)").arg(dip).arg(angularStep_deg/2).arg(dipDir).arg(angularStep_deg/2);
+		// return QString("(%1+/-%2) / (%3+/-%4)").arg(dip).arg(angularStep_deg/2).arg(dipDir).arg(angularStep_deg/2);
 		return QString("%1_%2").arg(dipDir).arg(dip);
 	}
 
@@ -111,40 +110,40 @@ public:
 
 	//! Subdivides a set of facets with similar orientation
 	static bool ProcessFamiliy(ccHObject* parent,
-		FacetSet& family,
-		unsigned familyIndex,
-		unsigned iDip,
-		unsigned iDipDir,
-		double angularStep_deg,
-		double maxDist)
+	                           FacetSet&  family,
+	                           unsigned   familyIndex,
+	                           unsigned   iDip,
+	                           unsigned   iDipDir,
+	                           double     angularStep_deg,
+	                           double     maxDist)
 	{
 		size_t count = family.size();
 		if (count == 0)
 			return true;
 
-		double dip = (iDip + 0.5) * angularStep_deg;
+		double dip    = (iDip + 0.5) * angularStep_deg;
 		double dipDir = (iDipDir + 0.5) * angularStep_deg;
 
 		QString familyName = GetFamilyName(dip, dipDir, angularStep_deg);
 
-		//create family group
+		// create family group
 		ccHObject* familyGroup = new ccHObject(QString("F%1_").arg(familyIndex, 2, 10, QChar('0')) + familyName);
 		if (parent)
 			parent->addChild(familyGroup);
 
-		//tag all facets consequently
+		// tag all facets consequently
 		for (FacetSet::iterator it = family.begin(); it != family.end(); ++it)
 		{
 			(*it)->setMetaData(s_OriFamilyKey, QVariant(static_cast<uint>(familyIndex)));
 			(*it)->setMetaData(s_OriFamilyNameKey, QVariant(familyName));
 		}
 
-		//now we are going to regroup the facets in sub-families
+		// now we are going to regroup the facets in sub-families
 		unsigned subFamilyIndex = 0;
 
 		if (count == 1 || count == 2)
 		{
-			//1 or 2 subsets at most!
+			// 1 or 2 subsets at most!
 			family[0]->setMetaData(s_OriSubFamilyKey, QVariant(static_cast<uint>(++subFamilyIndex)));
 			ccHObject* subFamilyGroup = new ccHObject(GetSubFamilyName(subFamilyIndex));
 			familyGroup->addChild(subFamilyGroup);
@@ -156,14 +155,14 @@ public:
 				PointCoordinateType dist = CommputeHDistBetweenFacets(family[0], family[1]);
 				if (dist <= maxDist)
 				{
-					//same sub-family as #1
+					// same sub-family as #1
 					family[1]->setMetaData(s_OriSubFamilyKey, QVariant(static_cast<uint>(subFamilyIndex)));
 					assert(family[1]->getParent() == 0);
 					subFamilyGroup->addChild(family[1]);
 				}
 				else
 				{
-					//new sub-family
+					// new sub-family
 					family[1]->setMetaData(s_OriSubFamilyKey, QVariant(static_cast<uint>(++subFamilyIndex)));
 					ccHObject* subFamilyGroup2 = new ccHObject(GetSubFamilyName(subFamilyIndex));
 					familyGroup->addChild(subFamilyGroup2);
@@ -174,7 +173,7 @@ public:
 		}
 		else
 		{
-			//create relative distance matrix
+			// create relative distance matrix
 			CCCoreLib::SquareMatrixf distMat(static_cast<unsigned>(count));
 			if (distMat.isValid())
 			{
@@ -188,25 +187,25 @@ public:
 					}
 				}
 
-				//regroup elements
+				// regroup elements
 				while (true)
 				{
-					//we look for the two nearest facets
+					// we look for the two nearest facets
 					std::pair<unsigned, unsigned> bestCouple(0, 0);
-					PointCoordinateType bestCoupleDist = -1;
+					PointCoordinateType           bestCoupleDist = -1;
 					for (unsigned i = 0; i + 1 < count; ++i)
 					{
-						if (distMat.getValue(i, i) == 0) //not already assigned
+						if (distMat.getValue(i, i) == 0) // not already assigned
 						{
 							for (unsigned j = i + 1; j < count; ++j)
 							{
-								if (distMat.getValue(j, j) == 0) //not already assigned
+								if (distMat.getValue(j, j) == 0) // not already assigned
 								{
 									if (bestCoupleDist < 0 || bestCoupleDist > distMat.getValue(i, j))
 									{
-										bestCouple.first = i;
+										bestCouple.first  = i;
 										bestCouple.second = j;
-										bestCoupleDist = distMat.getValue(i, j);
+										bestCoupleDist    = distMat.getValue(i, j);
 									}
 								}
 							}
@@ -214,24 +213,24 @@ public:
 					}
 
 					if (bestCoupleDist < 0 || bestCoupleDist > maxDist)
-						break; //no more available couples!
+						break; // no more available couples!
 
-					//othrewise we push this couple in the new family set
+					// othrewise we push this couple in the new family set
 					std::vector<unsigned> subFamily(2);
 					subFamily[0] = bestCouple.first;
 					subFamily[1] = bestCouple.second;
-					//flag them as 'assigned'
+					// flag them as 'assigned'
 					distMat.setValue(bestCouple.first, bestCouple.first, -1);
 					distMat.setValue(bestCouple.second, bestCouple.second, -1);
 
-					//now look for other available facets for this sub-family
+					// now look for other available facets for this sub-family
 					while (true)
 					{
-						PointCoordinateType bestDist = -1;
-						unsigned bestIndex = 0;
+						PointCoordinateType bestDist  = -1;
+						unsigned            bestIndex = 0;
 						for (unsigned i = 0; i < count; ++i)
 						{
-							if (distMat.getValue(i, i) == 0) //not already assigned
+							if (distMat.getValue(i, i) == 0) // not already assigned
 							{
 								PointCoordinateType minDist = -1;
 								for (unsigned j = 0; j < subFamily.size(); ++j)
@@ -239,7 +238,7 @@ public:
 									const PointCoordinateType& dist = distMat.getValue(i, subFamily[j]);
 									if (dist < maxDist)
 									{
-										//still elligible?
+										// still elligible?
 										if (minDist < 0 || dist < minDist)
 											minDist = dist;
 									}
@@ -248,11 +247,11 @@ public:
 										minDist = -1;
 										break;
 									}
-								} //end of sub-family test
+								} // end of sub-family test
 
 								if (minDist >= 0 && (bestDist < 0 || minDist < bestDist))
 								{
-									bestDist = minDist;
+									bestDist  = minDist;
 									bestIndex = i;
 								}
 							}
@@ -260,9 +259,9 @@ public:
 
 						if (bestDist >= 0)
 						{
-							//add candidate to sub-family
+							// add candidate to sub-family
 							subFamily.push_back(bestIndex);
-							//flag it as 'assigned'
+							// flag it as 'assigned'
 							distMat.setValue(bestIndex, bestIndex, -1);
 						}
 						else
@@ -270,9 +269,9 @@ public:
 							break;
 						}
 					}
-					//end of sub-family
+					// end of sub-family
 
-					//we can set the class for all the sub-family elements
+					// we can set the class for all the sub-family elements
 					{
 						++subFamilyIndex;
 						ccHObject* subFamilyGroup = new ccHObject(GetSubFamilyName(subFamilyIndex));
@@ -288,11 +287,11 @@ public:
 				}
 				// no more sub-families
 
-				//don't forget to set the class for the remaining isolated elements
+				// don't forget to set the class for the remaining isolated elements
 				{
 					for (unsigned i = 0; i < count; ++i)
 					{
-						if (distMat.getValue(i, i) == 0) //not already assigned
+						if (distMat.getValue(i, i) == 0) // not already assigned
 						{
 							ccFacet* facet = family[i];
 							assert(facet->getParent() == 0);
@@ -303,18 +302,17 @@ public:
 						}
 					}
 				}
-
 			}
 			else
 			{
-				//not enough memory
+				// not enough memory
 				for (unsigned i = 0; i < count; ++i)
 					familyGroup->addChild(family[i]);
 				return false;
 			}
 		}
 
-		//eventually we set the right colors for each facet
+		// eventually we set the right colors for each facet
 		unsigned subFamilyCount = subFamilyIndex;
 		if (subFamilyCount)
 		{
@@ -349,11 +347,11 @@ public:
 		size_t facetCount = facets.size();
 		if (facetCount == 0)
 		{
-			//nothing to do
+			// nothing to do
 			return true;
 		}
 
-		//remove all facets from the group first (without deleting them!)
+		// remove all facets from the group first (without deleting them!)
 		{
 			for (size_t i = 0; i < facetCount; ++i)
 			{
@@ -362,13 +360,13 @@ public:
 				facet->getParent()->removeDependencyWith(facet);
 				facet->getParent()->removeChild(facet);
 			}
-			//and remove all remaining children from the input group!
+			// and remove all remaining children from the input group!
 			facetGroup->removeAllChildren();
 		}
 
-		//dip steps (dip in [0,90])
+		// dip steps (dip in [0,90])
 		unsigned dSteps = static_cast<unsigned>(ceil(90.0 / angularStep_deg));
-		//dip direction steps (dip dir. in [0,360])
+		// dip direction steps (dip dir. in [0,360])
 		unsigned ddSteps = static_cast<unsigned>(ceil(360.0 / angularStep_deg));
 
 		bool error = false;
@@ -376,7 +374,7 @@ public:
 		{
 			ccFacet* facet = static_cast<ccFacet*>(facets.front());
 
-			//unique facet = unique family
+			// unique facet = unique family
 			FacetSet family(1, facet);
 
 			unsigned iDip = 0, iDipDir = 0;
@@ -388,22 +386,22 @@ public:
 		{
 			unsigned gridSize = dSteps * ddSteps;
 
-			//grid to store all orientation 'families'
+			// grid to store all orientation 'families'
 			FacetSet** grid = new FacetSet*[gridSize];
 			if (!grid)
 			{
-				//not enough memory
+				// not enough memory
 				error = true;
 			}
 			else
 			{
-				memset(grid, 0, sizeof(FacetSet*)*gridSize);
+				memset(grid, 0, sizeof(FacetSet*) * gridSize);
 
 				QProgressDialog pDlg(QObject::tr("Families classification"), QString(), 0, static_cast<int>(facetCount));
 				pDlg.show();
 				QApplication::processEvents();
 
-				//project each facet in grid
+				// project each facet in grid
 				unsigned setCount = 0;
 				for (size_t i = 0; i < facetCount; ++i)
 				{
@@ -420,7 +418,7 @@ public:
 						set = new FacetSet;
 						if (!set)
 						{
-							//not enough memory
+							// not enough memory
 							error = true;
 							break;
 						}
@@ -434,7 +432,7 @@ public:
 					}
 					catch (const std::bad_alloc&)
 					{
-						//not enough memory
+						// not enough memory
 						error = true;
 						break;
 					}
@@ -450,21 +448,21 @@ public:
 					pDlg.show();
 					QApplication::processEvents();
 
-					//now scan the grid and tag all 'families'
-					FacetSet** set = grid;
-					int progress = 0;
+					// now scan the grid and tag all 'families'
+					FacetSet** set      = grid;
+					int        progress = 0;
 					for (unsigned j = 0; j < dSteps; ++j)
 					{
 						for (unsigned i = 0; i < ddSteps; ++i, ++set)
 						{
-							//new family?
+							// new family?
 							if (*set)
 							{
 								error = !ProcessFamiliy(facetGroup, **set, ++familyIndex, j, i, angularStep_deg, maxDist);
 								if (error)
 								{
-									//stop the process
-									//i = ddSteps;
+									// stop the process
+									// i = ddSteps;
 									j = dSteps;
 									break;
 								}
@@ -476,7 +474,7 @@ public:
 				}
 			}
 
-			//release grid
+			// release grid
 			{
 				for (unsigned i = 0; i < gridSize; ++i)
 					if (grid[i])
@@ -486,7 +484,7 @@ public:
 			}
 		}
 
-		//check that no parent-less facets remain!
+		// check that no parent-less facets remain!
 		{
 			for (size_t i = 0; i < facetCount; ++i)
 			{
@@ -497,11 +495,11 @@ public:
 			}
 		}
 
-		//update associated display to all children as the whole structure may have changed!
+		// update associated display to all children as the whole structure may have changed!
 		facetGroup->setDisplay_recursive(facetGroup->getDisplay());
 
 		return !error;
 	}
 };
 
-#endif //QFACET_FACETS_CLASSIFIER_HEADER
+#endif // QFACET_FACETS_CLASSIFIER_HEADER

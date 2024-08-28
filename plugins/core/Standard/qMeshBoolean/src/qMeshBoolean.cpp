@@ -1,36 +1,36 @@
-//##########################################################################
-//#                                                                        #
-//#                   CLOUDCOMPARE PLUGIN: qMeshBoolean                    #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                  COPYRIGHT: Daniel Girardeau-Montaut                   #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                   CLOUDCOMPARE PLUGIN: qMeshBoolean                    #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                  COPYRIGHT: Daniel Girardeau-Montaut                   #
+// #                                                                        #
+// ##########################################################################
 
 #include "qMeshBoolean.h"
 
-//qCC_db
+// qCC_db
 #include <ccMesh.h>
 #include <ccPointCloud.h>
 
-//dialog
+// dialog
 #include "ccMeshBooleanDialog.h"
 
-//Qt
+// Qt
 #include <QMainWindow>
-#include <QtGui>
 #include <QProgressDialog>
 #include <QtConcurrentRun>
+#include <QtGui>
 
-//system
+// system
 #if defined(CC_WINDOWS)
 #include "windows.h"
 #else
@@ -38,12 +38,12 @@
 #include <unistd.h>
 #endif
 
-//libIGL
+// libIGL
 #ifdef _MSC_VER
-#pragma warning( disable: 4018 )
-#pragma warning( disable: 4129 )
-#pragma warning( disable: 4267 )
-#pragma warning( disable: 4566 )
+#pragma warning(disable : 4018)
+#pragma warning(disable : 4129)
+#pragma warning(disable : 4267)
+#pragma warning(disable : 4566)
 #endif
 #include <igl/copyleft/cgal/mesh_boolean.h>
 
@@ -54,37 +54,37 @@ struct IGLMesh
 	Eigen::MatrixXi F; //!< Triangles
 };
 
-qMeshBoolean::qMeshBoolean(QObject* parent/*=nullptr*/)
-	: QObject(parent)
-	, ccStdPluginInterface(":/CC/plugin/qMeshBoolean/info.json")
-	, m_action(nullptr)
+qMeshBoolean::qMeshBoolean(QObject* parent /*=nullptr*/)
+    : QObject(parent)
+    , ccStdPluginInterface(":/CC/plugin/qMeshBoolean/info.json")
+    , m_action(nullptr)
 {
 }
 
-QList<QAction *> qMeshBoolean::getActions()
+QList<QAction*> qMeshBoolean::getActions()
 {
-	//default action
+	// default action
 	if (!m_action)
 	{
 		m_action = new QAction(getName(), this);
 		m_action->setToolTip(getDescription());
 		m_action->setIcon(getIcon());
-		
-		//connect signal
+
+		// connect signal
 		connect(m_action, &QAction::triggered, this, &qMeshBoolean::doAction);
 	}
 
-	return QList<QAction *>{ m_action };
+	return QList<QAction*>{m_action};
 }
 
 void qMeshBoolean::onNewSelection(const ccHObject::Container& selectedEntities)
 {
 	if (m_action)
 	{
-		//we need two and only two meshes!
+		// we need two and only two meshes!
 		m_action->setEnabled(selectedEntities.size() == 2
-			&& selectedEntities[0]->isKindOf(CC_TYPES::MESH)
-			&& selectedEntities[1]->isKindOf(CC_TYPES::MESH));
+		                     && selectedEntities[0]->isKindOf(CC_TYPES::MESH)
+		                     && selectedEntities[1]->isKindOf(CC_TYPES::MESH));
 	}
 }
 
@@ -101,7 +101,7 @@ bool ToIGLMesh(const ccMesh* in, IGLMesh& out, ccMainAppInterface* app = nullptr
 	ccGenericPointCloud* vertices = in->getAssociatedCloud();
 	assert(vertices);
 
-	unsigned triCount = in->size();
+	unsigned triCount  = in->size();
 	unsigned vertCount = vertices ? vertices->size() : 0;
 
 	try
@@ -116,25 +116,25 @@ bool ToIGLMesh(const ccMesh* in, IGLMesh& out, ccMainAppInterface* app = nullptr
 		return false;
 	}
 
-	//import triangle indexes
+	// import triangle indexes
 	{
 		for (unsigned i = 0; i < triCount; i++)
 		{
 			const CCCoreLib::VerticesIndexes* tsi = in->getTriangleVertIndexes(i);
-			out.F(i, 0) = tsi->i1;
-			out.F(i, 1) = tsi->i2;
-			out.F(i, 2) = tsi->i3;
+			out.F(i, 0)                           = tsi->i1;
+			out.F(i, 1)                           = tsi->i2;
+			out.F(i, 2)                           = tsi->i3;
 		}
 	}
 
-	//import vertices
+	// import vertices
 	{
 		for (unsigned i = 0; i < vertCount; i++)
 		{
 			const CCVector3* P = vertices->getPoint(i);
-			out.V(i, 0) = P->x;
-			out.V(i, 1) = P->y;
-			out.V(i, 2) = P->z;
+			out.V(i, 0)        = P->x;
+			out.V(i, 1)        = P->y;
+			out.V(i, 2)        = P->z;
 		}
 	}
 
@@ -150,7 +150,7 @@ ccMesh* FromIGLMesh(const IGLMesh& in, ccMainAppInterface* app = nullptr)
 		return nullptr;
 	}
 
-	unsigned triCount = static_cast<unsigned>(in.F.rows());
+	unsigned triCount  = static_cast<unsigned>(in.F.rows());
 	unsigned vertCount = static_cast<unsigned>(in.V.rows());
 
 	ccPointCloud* vertices = new ccPointCloud("vertices");
@@ -172,18 +172,18 @@ ccMesh* FromIGLMesh(const IGLMesh& in, ccMainAppInterface* app = nullptr)
 		return nullptr;
 	}
 
-	//import vertices
+	// import vertices
 	{
 		for (unsigned i = 0; i < vertCount; i++)
 		{
-			CCVector3 Pout(	static_cast<PointCoordinateType>(in.V(i, 0)),
-							static_cast<PointCoordinateType>(in.V(i, 1)),
-							static_cast<PointCoordinateType>(in.V(i, 2)) );
+			CCVector3 Pout(static_cast<PointCoordinateType>(in.V(i, 0)),
+			               static_cast<PointCoordinateType>(in.V(i, 1)),
+			               static_cast<PointCoordinateType>(in.V(i, 2)));
 			vertices->addPoint(Pout);
 		}
 	}
 
-	//import triangle indexes
+	// import triangle indexes
 	{
 		for (unsigned i = 0; i < triCount; i++)
 		{
@@ -201,18 +201,18 @@ ccMesh* FromIGLMesh(const IGLMesh& in, ccMainAppInterface* app = nullptr)
 struct BoolOpParameters
 {
 	ccMeshBooleanDialog::CSG_OPERATION operation = ccMeshBooleanDialog::UNION;
-	IGLMesh* meshA = nullptr;
-	IGLMesh* meshB = nullptr;
-	IGLMesh output;
-	QString nameA;
-	QString nameB;
-	ccMainAppInterface* app = nullptr;
+	IGLMesh*                           meshA     = nullptr;
+	IGLMesh*                           meshB     = nullptr;
+	IGLMesh                            output;
+	QString                            nameA;
+	QString                            nameB;
+	ccMainAppInterface*                app = nullptr;
 };
 static BoolOpParameters s_params;
 
 static bool DoPerformBooleanOp()
 {
-	//invalid parameters
+	// invalid parameters
 	if (!s_params.meshA || !s_params.meshB)
 	{
 		assert(false);
@@ -225,7 +225,7 @@ static bool DoPerformBooleanOp()
 		timer.start();
 
 		igl::MeshBooleanType booleanType = igl::NUM_MESH_BOOLEAN_TYPES; // = invalid
-		//perform the boolean operation
+		// perform the boolean operation
 		switch (s_params.operation)
 		{
 		case ccMeshBooleanDialog::UNION:
@@ -247,18 +247,18 @@ static bool DoPerformBooleanOp()
 		default:
 			assert(false);
 			if (s_params.app)
-				s_params.app->dispToConsole("[Mesh boolean] Unhandled operation?!", ccMainAppInterface::WRN_CONSOLE_MESSAGE); //DGM: can't issue an error message (i.e. with dialog) in another thread!
+				s_params.app->dispToConsole("[Mesh boolean] Unhandled operation?!", ccMainAppInterface::WRN_CONSOLE_MESSAGE); // DGM: can't issue an error message (i.e. with dialog) in another thread!
 			return false;
 		}
 
 		s_params.output = IGLMesh();
-		if (!igl::copyleft::cgal::mesh_boolean(	s_params.meshA->V,
-												s_params.meshA->F,
-												s_params.meshB->V,
-												s_params.meshB->F,
-												booleanType,
-												s_params.output.V,
-												s_params.output.F ))
+		if (!igl::copyleft::cgal::mesh_boolean(s_params.meshA->V,
+		                                       s_params.meshA->F,
+		                                       s_params.meshB->V,
+		                                       s_params.meshB->F,
+		                                       booleanType,
+		                                       s_params.output.V,
+		                                       s_params.output.F))
 		{
 			if (s_params.app)
 				s_params.app->dispToConsole("[Mesh boolean] CSG operation failed", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
@@ -270,7 +270,6 @@ static bool DoPerformBooleanOp()
 			// display the duration time
 			s_params.app->dispToConsole(QString("[Mesh boolean] CSG operation duration: %1 s").arg(timer.elapsed() / 1000.0, 0, 'f', 2));
 		}
-
 	}
 	catch (const std::exception& e)
 	{
@@ -291,10 +290,10 @@ void qMeshBoolean::doAction()
 	}
 
 	const ccHObject::Container& selectedEntities = m_app->getSelectedEntities();
-	size_t selNum = selectedEntities.size();
-	if (	selNum != 2
-		||	!selectedEntities[0]->isKindOf(CC_TYPES::MESH)
-		||	!selectedEntities[1]->isKindOf(CC_TYPES::MESH))
+	size_t                      selNum           = selectedEntities.size();
+	if (selNum != 2
+	    || !selectedEntities[0]->isKindOf(CC_TYPES::MESH)
+	    || !selectedEntities[1]->isKindOf(CC_TYPES::MESH))
 	{
 		assert(false);
 		m_app->dispToConsole("Select two and only two meshes!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -304,7 +303,7 @@ void qMeshBoolean::doAction()
 	ccMesh* meshA = static_cast<ccMesh*>(selectedEntities[0]);
 	ccMesh* meshB = static_cast<ccMesh*>(selectedEntities[1]);
 
-	//show dialog to let the user choose the operation to perform
+	// show dialog to let the user choose the operation to perform
 	ccMeshBooleanDialog cDlg(m_app->getMainWindow());
 	cDlg.setNames(meshA->getName(), meshB->getName());
 	if (!cDlg.exec())
@@ -316,7 +315,7 @@ void qMeshBoolean::doAction()
 	if (cDlg.isSwapped())
 		std::swap(meshA, meshB);
 
-	//try to convert both meshes to IGLMesh structures
+	// try to convert both meshes to IGLMesh structures
 	IGLMesh iglMeshA;
 	if (!ToIGLMesh(meshA, iglMeshA, m_app))
 		return;
@@ -324,24 +323,24 @@ void qMeshBoolean::doAction()
 	if (!ToIGLMesh(meshB, iglMeshB, m_app))
 		return;
 
-	//launch process
+	// launch process
 	{
-		//run in a separate thread
+		// run in a separate thread
 		QProgressDialog pDlg(tr("Operation in progress"), QString(), 0, 0, m_app->getMainWindow());
 		pDlg.setWindowTitle("Mesh boolean");
 		pDlg.show();
 		QApplication::processEvents();
 
-		s_params.app = m_app;
-		s_params.meshA = &iglMeshA;
-		s_params.meshB = &iglMeshB;
-		s_params.nameA = meshA->getName();
-		s_params.nameB = meshB->getName();
+		s_params.app       = m_app;
+		s_params.meshA     = &iglMeshA;
+		s_params.meshB     = &iglMeshB;
+		s_params.nameA     = meshA->getName();
+		s_params.nameB     = meshB->getName();
 		s_params.operation = cDlg.getSelectedOperation();
 
 		QFuture<bool> future = QtConcurrent::run(DoPerformBooleanOp);
 
-		//wait until process is finished!
+		// wait until process is finished!
 		while (!future.isFinished())
 		{
 #if defined(CC_WINDOWS)
@@ -354,8 +353,8 @@ void qMeshBoolean::doAction()
 			QApplication::processEvents();
 		}
 
-		//just to be sure
-		s_params.app = nullptr;
+		// just to be sure
+		s_params.app   = nullptr;
 		s_params.meshA = s_params.meshB = nullptr;
 
 		pDlg.hide();
@@ -363,14 +362,14 @@ void qMeshBoolean::doAction()
 
 		if (!future.result())
 		{
-			//an error occurred
+			// an error occurred
 			if (m_app)
 				m_app->dispToConsole("Computation failed", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			return;
 		}
 	}
 
-	//convert the updated mesh (A) to a new ccMesh structure
+	// convert the updated mesh (A) to a new ccMesh structure
 	ccMesh* result = FromIGLMesh(s_params.output);
 
 	if (result)
@@ -379,7 +378,7 @@ void qMeshBoolean::doAction()
 		if (meshB->getDisplay() == meshA->getDisplay())
 			meshB->setEnabled(false);
 
-		//set name
+		// set name
 		QString opName;
 		switch (cDlg.getSelectedOperation())
 		{
@@ -401,7 +400,7 @@ void qMeshBoolean::doAction()
 		}
 		result->setName(QString("(%1).%2.(%3)").arg(meshA->getName()).arg(opName).arg(meshB->getName()));
 
-		//normals
+		// normals
 		bool hasNormals = false;
 		if (meshA->hasTriNormals())
 			hasNormals = result->computePerTriangleNormals();
@@ -414,7 +413,7 @@ void qMeshBoolean::doAction()
 		result->redrawDisplay();
 	}
 
-	//currently selected entities appearance may have changed!
+	// currently selected entities appearance may have changed!
 	m_app->refreshAll();
 
 	if (m_app)

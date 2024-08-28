@@ -1,37 +1,37 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qFacets                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                      COPYRIGHT: Thomas Dewez, BRGM                     #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qFacets                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                      COPYRIGHT: Thomas Dewez, BRGM                     #
+// #                                                                        #
+// ##########################################################################
 
 #include "kdTreeForFacetExtraction.h"
 
-//CCCoreLib
+// CCCoreLib
 #include <GenericProgressCallback.h>
 #include <Neighbourhood.h>
 #include <ParallelSort.h>
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 
-//Qt
+// Qt
 #include <QApplication>
 
-//static bool AscendingLeafErrorComparison(const ccKdTree::Leaf* a, const ccKdTree::Leaf* b)
+// static bool AscendingLeafErrorComparison(const ccKdTree::Leaf* a, const ccKdTree::Leaf* b)
 //{
 //	return a->error < b->error;
-//}
+// }
 
 static bool DescendingLeafSizeComparison(const ccKdTree::Leaf* a, const ccKdTree::Leaf* b)
 {
@@ -40,19 +40,27 @@ static bool DescendingLeafSizeComparison(const ccKdTree::Leaf* a, const ccKdTree
 
 struct Candidate
 {
-	ccKdTree::Leaf* leaf;
+	ccKdTree::Leaf*     leaf;
 	PointCoordinateType dist;
 	PointCoordinateType radius;
-	CCVector3 centroid;
+	CCVector3           centroid;
 
-	Candidate() : leaf(nullptr), dist(CCCoreLib::PC_NAN), radius(0) {}
-	Candidate(ccKdTree::Leaf* l) : leaf(l), dist(CCCoreLib::PC_NAN), radius(0)
+	Candidate()
+	    : leaf(nullptr)
+	    , dist(CCCoreLib::PC_NAN)
+	    , radius(0)
+	{
+	}
+	Candidate(ccKdTree::Leaf* l)
+	    : leaf(l)
+	    , dist(CCCoreLib::PC_NAN)
+	    , radius(0)
 	{
 		if (leaf && leaf->points)
 		{
 			CCCoreLib::Neighbourhood N(leaf->points);
 			centroid = *N.getGravityCenter();
-			radius = N.computeLargestRadius();
+			radius   = N.computeLargestRadius();
 		}
 	}
 };
@@ -62,13 +70,13 @@ static bool CandidateDistAscendingComparison(const Candidate& a, const Candidate
 	return a.dist < b.dist;
 }
 
-bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
-											double maxError,
-											CCCoreLib::DistanceComputationTools::ERROR_MEASURES errorMeasure,
-											double maxAngle_deg,
-											PointCoordinateType overlapCoef/*=1*/,
-											bool closestFirst/*=true*/,
-											CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/)
+bool ccKdTreeForFacetExtraction::FuseCells(ccKdTree*                                           kdTree,
+                                           double                                              maxError,
+                                           CCCoreLib::DistanceComputationTools::ERROR_MEASURES errorMeasure,
+                                           double                                              maxAngle_deg,
+                                           PointCoordinateType                                 overlapCoef /*=1*/,
+                                           bool                                                closestFirst /*=true*/,
+                                           CCCoreLib::GenericProgressCallback*                 progressCb /*=nullptr*/)
 {
 	if (!kdTree)
 		return false;
@@ -77,12 +85,12 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 	if (!associatedGenericCloud || !associatedGenericCloud->isA(CC_TYPES::POINT_CLOUD) || maxError < 0.0)
 		return false;
 
-	//get leaves
+	// get leaves
 	std::vector<ccKdTree::Leaf*> leaves;
 	if (!kdTree->getLeaves(leaves) || leaves.empty())
 		return false;
 
-	//progress notification
+	// progress notification
 	CCCoreLib::NormalizedProgress nProgress(progressCb, static_cast<unsigned>(leaves.size()));
 	if (progressCb)
 	{
@@ -97,36 +105,36 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 
 	ccPointCloud* pc = static_cast<ccPointCloud*>(associatedGenericCloud);
 
-	//sort cells based on their population size (we start by the biggest ones)
+	// sort cells based on their population size (we start by the biggest ones)
 	ParallelSort(leaves.begin(), leaves.end(), DescendingLeafSizeComparison);
 
-	//set all 'userData' to -1 (i.e. unfused cells)
+	// set all 'userData' to -1 (i.e. unfused cells)
 	{
 		for (auto& leaf : leaves)
 		{
 			leaf->userData = -1;
-			//check by the way that the plane normal is unit!
+			// check by the way that the plane normal is unit!
 			assert(static_cast<double>(std::abs(CCVector3(leaf->planeEq).norm2()) - 1.0) < 1.0e-6);
 		}
 	}
 
 	// cosine of the max angle between fused 'planes'
-	const double c_minCosNormAngle = cos( CCCoreLib::DegreesToRadians( maxAngle_deg ) );
+	const double c_minCosNormAngle = cos(CCCoreLib::DegreesToRadians(maxAngle_deg));
 
-	//fuse all cells, starting from the ones with the best error
+	// fuse all cells, starting from the ones with the best error
 	const int unvisitedNeighborValue = -1;
-	bool cancelled = false;
-	int macroIndex = 1; //starts at 1 (0 is reserved for cells already above the max error)
+	bool      cancelled              = false;
+	int       macroIndex             = 1; // starts at 1 (0 is reserved for cells already above the max error)
 	{
 		for (auto& currentCell : leaves)
 		{
 			if (currentCell->error >= maxError)
-				currentCell->userData = 0; //0 = special group for cells already above the user defined threshold!
+				currentCell->userData = 0; // 0 = special group for cells already above the user defined threshold!
 
-			//already fused?
+			// already fused?
 			if (currentCell->userData != -1)
 			{
-				if (progressCb && !nProgress.oneStep()) //process canceled by user
+				if (progressCb && !nProgress.oneStep()) // process canceled by user
 				{
 					cancelled = true;
 					break;
@@ -134,25 +142,25 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 				continue;
 			}
 
-			//we create a new "macro cell" index
+			// we create a new "macro cell" index
 			currentCell->userData = macroIndex++;
 
-			//we init the current set of 'fused' points with the cell's points
+			// we init the current set of 'fused' points with the cell's points
 			CCCoreLib::ReferenceCloud* currentPointSet = currentCell->points;
-			//get current fused set centroid and normal
+			// get current fused set centroid and normal
 			CCVector3 currentCentroid = *CCCoreLib::Neighbourhood(currentPointSet).getGravityCenter();
 			CCVector3 currentNormal(currentCell->planeEq);
 
-			//visited neighbors
+			// visited neighbors
 			ccKdTree::LeafSet visitedNeighbors;
-			//set of candidates
+			// set of candidates
 			std::list<Candidate> candidates;
 
-			//we are going to iteratively look for neighbor cells that could be fused to this one
+			// we are going to iteratively look for neighbor cells that could be fused to this one
 			ccKdTree::LeafVector cellsToTest;
 			cellsToTest.push_back(currentCell);
 
-			if (progressCb && !nProgress.oneStep()) //process canceled by user
+			if (progressCb && !nProgress.oneStep()) // process canceled by user
 			{
 				cancelled = true;
 				break;
@@ -160,37 +168,37 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 
 			while (!cellsToTest.empty() || !candidates.empty())
 			{
-				//get all neighbors around the 'waiting' cell(s)
+				// get all neighbors around the 'waiting' cell(s)
 				if (!cellsToTest.empty())
 				{
 					ccKdTree::LeafSet neighbors;
 					while (!cellsToTest.empty())
 					{
-						if (!kdTree->getNeighborLeaves(cellsToTest.back(), neighbors, &unvisitedNeighborValue)) //we only consider unvisited cells!
+						if (!kdTree->getNeighborLeaves(cellsToTest.back(), neighbors, &unvisitedNeighborValue)) // we only consider unvisited cells!
 						{
-							//an error occurred
+							// an error occurred
 							return false;
 						}
 						cellsToTest.pop_back();
 					}
 
-					//add those (new) neighbors to the 'visitedNeighbors' set
-					//and to the candidates set by the way if they are not yet there
+					// add those (new) neighbors to the 'visitedNeighbors' set
+					// and to the candidates set by the way if they are not yet there
 					for (ccKdTree::LeafSet::iterator it = neighbors.begin(); it != neighbors.end(); ++it)
 					{
-						ccKdTree::Leaf* neighbor = *it;
-						std::pair<ccKdTree::LeafSet::iterator,bool> ret = visitedNeighbors.insert(neighbor);
-						//neighbour not already in the set?
+						ccKdTree::Leaf*                              neighbor = *it;
+						std::pair<ccKdTree::LeafSet::iterator, bool> ret      = visitedNeighbors.insert(neighbor);
+						// neighbour not already in the set?
 						if (ret.second)
 						{
-							//we create the corresponding candidate
+							// we create the corresponding candidate
 							try
 							{
 								candidates.push_back(Candidate(neighbor));
 							}
 							catch (const std::bad_alloc&)
 							{
-								//not enough memory!
+								// not enough memory!
 								ccLog::Warning("[ccKdTreeForFacetExtraction] Not enough memory!");
 								return false;
 							}
@@ -198,24 +206,24 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 					}
 				}
 
-				//is there remaining candidates?
+				// is there remaining candidates?
 				if (!candidates.empty())
 				{
-					//update the set of candidates
+					// update the set of candidates
 					if (closestFirst && candidates.size() > 1)
 					{
-						for (std::list<Candidate>::iterator it = candidates.begin(); it !=candidates.end(); ++it)
-							it->dist = (it->centroid-currentCentroid).norm2();
+						for (std::list<Candidate>::iterator it = candidates.begin(); it != candidates.end(); ++it)
+							it->dist = (it->centroid - currentCentroid).norm2();
 
-						//sort candidates by their distance
+						// sort candidates by their distance
 						candidates.sort(CandidateDistAscendingComparison);
 					}
-					
-					//we will keep track of the best fused 'couple' at each pass
-					std::list<Candidate>::iterator bestIt = candidates.end();
-					CCCoreLib::ReferenceCloud* bestFused = nullptr;
-					CCVector3 bestNormal(0, 0, 0);
-					double bestError = -1.0;
+
+					// we will keep track of the best fused 'couple' at each pass
+					std::list<Candidate>::iterator bestIt    = candidates.end();
+					CCCoreLib::ReferenceCloud*     bestFused = nullptr;
+					CCVector3                      bestNormal(0, 0, 0);
+					double                         bestError = -1.0;
 
 					unsigned skipCount = 0;
 					for (std::list<Candidate>::iterator it = candidates.begin(); it != candidates.end(); /*++it*/)
@@ -223,7 +231,7 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 						assert(it->leaf && it->leaf->points);
 						assert(currentPointSet->getAssociatedCloud() == it->leaf->points->getAssociatedCloud());
 
-						//if the leaf orientation is too different
+						// if the leaf orientation is too different
 						if (std::abs(CCVector3(it->leaf->planeEq).dot(currentNormal)) < c_minCosNormAngle)
 						{
 							it = candidates.erase(it);
@@ -232,12 +240,12 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 							continue;
 						}
 
-						//compute the minimum distance between the candidate centroid and the 'currentPointSet'
+						// compute the minimum distance between the candidate centroid and the 'currentPointSet'
 						PointCoordinateType minDistToMainSet = 0.0;
 						{
 							for (unsigned j = 0; j < currentPointSet->size(); ++j)
 							{
-								const CCVector3* P = currentPointSet->getPoint(j);
+								const CCVector3*    P  = currentPointSet->getPoint(j);
 								PointCoordinateType d2 = (*P - it->centroid).norm2();
 								if (d2 < minDistToMainSet || j == 0)
 									minDistToMainSet = d2;
@@ -245,7 +253,7 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 							minDistToMainSet = sqrt(minDistToMainSet);
 						}
 
-						//if the leaf is too far
+						// if the leaf is too far
 						if (it->radius < minDistToMainSet / overlapCoef)
 						{
 							++it;
@@ -253,11 +261,11 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 							continue;
 						}
 
-						//fuse the main set with the current candidate
+						// fuse the main set with the current candidate
 						CCCoreLib::ReferenceCloud* fused = new CCCoreLib::ReferenceCloud(*currentPointSet);
 						if (!fused->add(*(it->leaf->points)))
 						{
-							//not enough memory!
+							// not enough memory!
 							ccLog::Warning("[ccKdTreeForFacetExtraction] Not enough memory!");
 							delete fused;
 							if (currentPointSet != currentCell->points)
@@ -265,32 +273,32 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 							return false;
 						}
 
-						//fit a plane and estimate the resulting error
-						double error = -1.0;
+						// fit a plane and estimate the resulting error
+						double                     error         = -1.0;
 						const PointCoordinateType* planeEquation = CCCoreLib::Neighbourhood(fused).getLSPlane();
 						if (planeEquation)
 							error = CCCoreLib::DistanceComputationTools::ComputeCloud2PlaneDistance(fused, planeEquation, errorMeasure);
 
 						if (error < 0.0 || error > maxError)
 						{
-							//candidate is rejected
+							// candidate is rejected
 							it = candidates.erase(it);
 						}
 						else
 						{
-							//otherwise we keep track of the best one!
+							// otherwise we keep track of the best one!
 							if (bestError < 0.0 || error < bestError)
 							{
-								bestIt = it;
+								bestIt    = it;
 								bestError = error;
 								if (bestFused)
 									delete bestFused;
-								bestFused = fused;
+								bestFused  = fused;
 								bestNormal = CCVector3(planeEquation);
-								fused = nullptr;
+								fused      = nullptr;
 
 								if (closestFirst)
-									break; //if we have found a good candidate, we stop here (closest first ;)
+									break; // if we have found a good candidate, we stop here (closest first ;)
 							}
 							++it;
 						}
@@ -302,7 +310,7 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 						}
 					}
 
-					//we have a (best) candidate for this pass?
+					// we have a (best) candidate for this pass?
 					if (bestIt != candidates.end())
 					{
 						assert(bestFused && bestError >= 0.0);
@@ -310,20 +318,20 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 							delete currentPointSet;
 						currentPointSet = bestFused;
 						{
-							//update infos
+							// update infos
 							CCCoreLib::Neighbourhood N(currentPointSet);
-							//currentCentroid = *N.getGravityCenter(); //if we update it, the search will naturally shift along one dimension!
-							//currentNormal = bestNormal; //same thing here for normals
+							// currentCentroid = *N.getGravityCenter(); //if we update it, the search will naturally shift along one dimension!
+							// currentNormal = bestNormal; //same thing here for normals
 						}
 
 						bestIt->leaf->userData = currentCell->userData;
 
-						//we will test this cell's neighbors as well
+						// we will test this cell's neighbors as well
 						cellsToTest.push_back(bestIt->leaf);
 
-						if (progressCb && !nProgress.oneStep()) //process canceled by user
+						if (progressCb && !nProgress.oneStep()) // process canceled by user
 						{
-							//premature end!
+							// premature end!
 							candidates.clear();
 							cellsToTest.clear();
 							cancelled = true;
@@ -331,21 +339,20 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 						}
 						QApplication::processEvents();
 
-						//we also remove it from the candidates list
+						// we also remove it from the candidates list
 						candidates.erase(bestIt);
 					}
 
 					if (skipCount == candidates.size() && cellsToTest.empty())
 					{
-						//only far leaves remain...
+						// only far leaves remain...
 						candidates.clear();
 					}
-
 				}
 
-			} //no more candidates or cells to test
+			} // no more candidates or cells to test
 
-			//end of the fusion process for the current leaf
+			// end of the fusion process for the current leaf
 			if (currentPointSet != currentCell->points)
 				delete currentPointSet;
 			currentPointSet = nullptr;
@@ -355,7 +362,7 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 		}
 	}
 
-	//convert fused indexes to SF
+	// convert fused indexes to SF
 	if (!cancelled)
 	{
 		if (!pc->enableScalarField())
@@ -370,10 +377,10 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 			if (subset)
 			{
 				ScalarType scalar = static_cast<ScalarType>(leaves[i]->userData);
-				if (leaves[i]->userData <= 0) //for unfused cells, we create new individual groups
+				if (leaves[i]->userData <= 0) // for unfused cells, we create new individual groups
 				{
 					scalar = static_cast<ScalarType>(macroIndex++);
-					//scalar = NAN_VALUE; //FIXME TEST
+					// scalar = NAN_VALUE; //FIXME TEST
 				}
 				for (unsigned j = 0; j < subset->size(); ++j)
 				{
@@ -382,7 +389,7 @@ bool ccKdTreeForFacetExtraction::FuseCells(	ccKdTree* kdTree,
 			}
 		}
 
-		//pc->setCurrentDisplayedScalarField(sfIdx);
+		// pc->setCurrentDisplayedScalarField(sfIdx);
 	}
 
 	return !cancelled;

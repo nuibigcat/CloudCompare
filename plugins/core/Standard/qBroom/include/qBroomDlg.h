@@ -1,34 +1,34 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qBroom                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: Wesley Grimes (Collision Engineering Associates)       #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qBroom                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: Wesley Grimes (Collision Engineering Associates)       #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef CC_BROOM_DLG_HEADER
 #define CC_BROOM_DLG_HEADER
 
 #include "ui_broomDlg.h"
 
-//CCCoreLib
+// CCCoreLib
 #include <CCGeom.h>
 
-//qCC_db
+// qCC_db
 #include <ccGLMatrix.h>
 
-//system
-#include <vector>
+// system
 #include <stdint.h>
+#include <vector>
 
 class ccHObject;
 class ccGenericPointCloud;
@@ -44,12 +44,12 @@ class ccMainAppInterface;
 class RGBAColorsTableType;
 
 //! Dialog for the qBroom plugin
-class qBroomDlg : public QDialog, public Ui::BroomDialog
+class qBroomDlg : public QDialog
+    , public Ui::BroomDialog
 {
 	Q_OBJECT
 
-public:
-
+  public:
 	//! Default constructor
 	explicit qBroomDlg(ccMainAppInterface* app = nullptr);
 
@@ -58,13 +58,12 @@ public:
 
 	//! Sets associated point cloud
 	/** \warning The cloud should already have an associated octree structure.
-		If not, the octree will be computed and the method may return false (if
-		an error occurs).
+	    If not, the octree will be computed and the method may return false (if
+	    an error occurs).
 	**/
 	bool setCloud(ccPointCloud* cloud, bool ownCloud = false, bool autoRedraw = true);
 
-protected:
-
+  protected:
 	//! Slot called when the 'reposition' button is clicked
 	void onReposition();
 	//! Slot called when the 'automate' button is clicked
@@ -76,7 +75,7 @@ protected:
 	//! Slot called when the left mouse button is clicked (on the 3D view)
 	void onLeftButtonClicked(int, int);
 	//! Slot called when the right mouse button is clicked (on the 3D view)
-	//void onRightButtonClicked(int, int);
+	// void onRightButtonClicked(int, int);
 	//! Slot called when the mouse is displaced over the 3D view
 	void onMouseMoved(int, int, Qt::MouseButtons);
 	//! Slot called when the mouse is released
@@ -92,9 +91,15 @@ protected:
 	void onSelectionModeChanged(int);
 
 	//! Undoes the last selection
-	void doUndo() { undo(1); }
+	void doUndo()
+	{
+		undo(1);
+	}
 	//! Undoes the last ten selections
-	void doUndo10() { undo(10); }
+	void doUndo10()
+	{
+		undo(10);
+	}
 
 	//! Cancels the segmentation process
 	void cancel();
@@ -103,8 +108,7 @@ protected:
 	//! Closes the tool
 	void validate();
 
-protected: //methods
-
+  protected: // methods
 	struct BroomDimensions
 	{
 		PointCoordinateType length, width, thick, height;
@@ -118,10 +122,10 @@ protected: //methods
 
 	//! Displace the broom (either with the mouse or with a know translation)
 	/** \warning Doesn't modify the class state BUT THE UNDO/SELECTION mechanism!
-		\param broomTrans starting position of the broom (updated with the new position on output)
-		\param broomDelta desired displacement (updated with the actual displacement on output)
-		\param stickToTheFloor whether to force the broom to stick to the 'floor' or not
-		\return whether the broom could be displaced or not (e.g. it lost track)
+	    \param broomTrans starting position of the broom (updated with the new position on output)
+	    \param broomDelta desired displacement (updated with the actual displacement on output)
+	    \param stickToTheFloor whether to force the broom to stick to the 'floor' or not
+	    \return whether the broom could be displaced or not (e.g. it lost track)
 	**/
 	bool moveBroom(ccGLMatrix& broomTrans, CCVector3d& broomDelta, bool stickToTheFloor) const;
 
@@ -147,7 +151,7 @@ protected: //methods
 
 	//! Selects a given point
 	/** \return whether the point has been actually selected
-	**/
+	 **/
 	bool selectPoint(unsigned index);
 
 	//! Undoes a given number of steps
@@ -162,7 +166,7 @@ protected: //methods
 	//! Generates the segmented point cloud
 	ccPointCloud* createSegmentedCloud(ccPointCloud* cloud, bool removeSelected, bool& error);
 
-	//inherited from QWidget
+	// inherited from QWidget
 	void closeEvent(QCloseEvent*);
 
 	//! Updates the automation area preview polyline
@@ -171,42 +175,46 @@ protected: //methods
 	//! Saves persistent settings
 	void savePersistentSettings();
 
-protected: //members
-
+  protected: // members
 	//! Cloud original state backup structure
 	struct CloudBackup
 	{
-		ccPointCloud* ref;
+		ccPointCloud*        ref;
 		RGBAColorsTableType* colors;
-		bool hadColors;
-		int displayedSFIndex;
-		ccGenericGLDisplay* originDisplay;
-		bool colorsWereDisplayed;
-		bool sfWasDisplayed;
-		bool wasVisible;
-		bool wasEnabled;
-		bool wasSelected;
-		bool hadOctree;
-		bool ownCloud;
+		bool                 hadColors;
+		int                  displayedSFIndex;
+		ccGenericGLDisplay*  originDisplay;
+		bool                 colorsWereDisplayed;
+		bool                 sfWasDisplayed;
+		bool                 wasVisible;
+		bool                 wasEnabled;
+		bool                 wasSelected;
+		bool                 hadOctree;
+		bool                 ownCloud;
 
 		//! Default constructor
 		CloudBackup()
-			: ref(0)
-			, colors(0)
-			, hadColors(false)
-			, displayedSFIndex(-1)
-			, originDisplay(0)
-			, colorsWereDisplayed(false)
-			, sfWasDisplayed(false)
-			, wasVisible(false)
-			, wasEnabled(false)
-			, wasSelected(false)
-			, hadOctree(false)
-			, ownCloud(false)
-		{}
+		    : ref(0)
+		    , colors(0)
+		    , hadColors(false)
+		    , displayedSFIndex(-1)
+		    , originDisplay(0)
+		    , colorsWereDisplayed(false)
+		    , sfWasDisplayed(false)
+		    , wasVisible(false)
+		    , wasEnabled(false)
+		    , wasSelected(false)
+		    , hadOctree(false)
+		    , ownCloud(false)
+		{
+		}
 
 		//! Destructor
-		~CloudBackup() { restore(); clear(); }
+		~CloudBackup()
+		{
+			restore();
+			clear();
+		}
 
 		//! Backups the given cloud
 		void backup(ccPointCloud* cloud);
@@ -237,27 +245,44 @@ protected: //members
 	//! Picking parameters
 	struct Picking
 	{
-		Picking() : mode(NO_PICKING) {}
-		~Picking() { clear(); }
+		Picking()
+		    : mode(NO_PICKING)
+		{
+		}
+		~Picking()
+		{
+			clear();
+		}
 
 		cc2DLabel* addLabel(ccGenericPointCloud* cloud, unsigned pointIndex);
-		void clear();
-		
-		enum Mode { NO_PICKING, BROOM_PICKING, AUTO_AREA_PICKING };
-		
-		Mode mode;
+		void       clear();
+
+		enum Mode
+		{
+			NO_PICKING,
+			BROOM_PICKING,
+			AUTO_AREA_PICKING
+		};
+
+		Mode                    mode;
 		std::vector<cc2DLabel*> labels;
 	};
 
 	//! Automation area
 	struct AutomationArea
 	{
-		AutomationArea() : polyline(0) {}
-		~AutomationArea() { clear(); }
+		AutomationArea()
+		    : polyline(0)
+		{
+		}
+		~AutomationArea()
+		{
+			clear();
+		}
 
 		void clear();
 
-		ccPolyline* polyline;
+		ccPolyline*            polyline;
 		std::vector<CCVector3> clickedPoints;
 	};
 
@@ -277,10 +302,12 @@ protected: //members
 	bool m_broomSelected;
 
 	//! Selection modes
-	enum SelectionModes {	INSIDE = 0,
-							ABOVE = 1,
-							BELOW = 2,
-							ABOVE_AND_BELOW = 3
+	enum SelectionModes
+	{
+		INSIDE          = 0,
+		ABOVE           = 1,
+		BELOW           = 2,
+		ABOVE_AND_BELOW = 3
 	};
 
 	//! Current selection mode

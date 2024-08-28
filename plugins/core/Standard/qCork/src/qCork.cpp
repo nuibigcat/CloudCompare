@@ -1,46 +1,46 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qCork                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                  COPYRIGHT: Daniel Girardeau-Montaut                   #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qCork                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                  COPYRIGHT: Daniel Girardeau-Montaut                   #
+// #                                                                        #
+// ##########################################################################
 
 #include "qCork.h"
 
-//qCC_db
+// qCC_db
 #include <ccMesh.h>
 #include <ccPointCloud.h>
 
-//dialog
+// dialog
 #include "ccCorkDlg.h"
 
-//Qt
+// Qt
 #include <QMainWindow>
-#include <QtGui>
 #include <QProgressDialog>
 #include <QtConcurrentRun>
+#include <QtGui>
 
-//Cork
+// Cork
 #ifdef _MSC_VER
-#pragma warning( push )
-#pragma warning( disable: 4005 ) // maco redefinition warnings
+#pragma warning(push)
+#pragma warning(disable : 4005) // maco redefinition warnings
 #endif
 #include <mesh/corkMesh.h>
 #ifdef _MSC_VER
-#pragma warning( pop )
+#pragma warning(pop)
 #endif
 
-//system
+// system
 #if defined(CC_WINDOWS)
 #include "windows.h"
 #else
@@ -48,37 +48,36 @@
 #include <unistd.h>
 #endif
 
-
-qCork::qCork(QObject* parent/*=nullptr*/)
-	: QObject(parent)
-	, ccStdPluginInterface(":/CC/plugin/qCork/info.json")
-	, m_action(nullptr)
+qCork::qCork(QObject* parent /*=nullptr*/)
+    : QObject(parent)
+    , ccStdPluginInterface(":/CC/plugin/qCork/info.json")
+    , m_action(nullptr)
 {
 }
 
-QList<QAction *> qCork::getActions()
+QList<QAction*> qCork::getActions()
 {
-	//default action
+	// default action
 	if (!m_action)
 	{
 		m_action = new QAction(getName(), this);
 		m_action->setToolTip(getDescription());
 		m_action->setIcon(getIcon());
-		//connect signal
+		// connect signal
 		connect(m_action, &QAction::triggered, this, &qCork::doAction);
 	}
 
-	return QList<QAction *>{ m_action };
+	return QList<QAction*>{m_action};
 }
 
 void qCork::onNewSelection(const ccHObject::Container& selectedEntities)
 {
 	if (m_action)
 	{
-		//we need two and only two meshes!
+		// we need two and only two meshes!
 		m_action->setEnabled(selectedEntities.size() == 2
-			&& selectedEntities[0]->isKindOf(CC_TYPES::MESH)
-			&& selectedEntities[1]->isKindOf(CC_TYPES::MESH));
+		                     && selectedEntities[0]->isKindOf(CC_TYPES::MESH)
+		                     && selectedEntities[1]->isKindOf(CC_TYPES::MESH));
 	}
 }
 
@@ -95,11 +94,11 @@ bool ToCorkMesh(const ccMesh* in, CorkMesh& out, ccMainAppInterface* app = nullp
 	ccGenericPointCloud* vertices = in->getAssociatedCloud();
 	assert(vertices);
 
-	unsigned triCount = in->size();
+	unsigned triCount  = in->size();
 	unsigned vertCount = vertices ? vertices->size() : 0;
 
-	std::vector<CorkMesh::Tri>& outTris = out.getTris();
-	std::vector<CorkVertex>& outVerts = out.getVerts();
+	std::vector<CorkMesh::Tri>& outTris  = out.getTris();
+	std::vector<CorkVertex>&    outVerts = out.getVerts();
 	try
 	{
 		outVerts.resize(vertCount);
@@ -119,31 +118,31 @@ bool ToCorkMesh(const ccMesh* in, CorkMesh& out, ccMainAppInterface* app = nullp
 		return false;
 	}
 
-	//import triangle indexes
+	// import triangle indexes
 	{
 		for (unsigned i = 0; i < triCount; i++)
 		{
 			const CCCoreLib::VerticesIndexes* tsi = in->getTriangleVertIndexes(i);
-			CorkTriangle corkTri;
-			corkTri.a = tsi->i1;
-			corkTri.b = tsi->i2;
-			corkTri.c = tsi->i3;
+			CorkTriangle                      corkTri;
+			corkTri.a       = tsi->i1;
+			corkTri.b       = tsi->i2;
+			corkTri.c       = tsi->i3;
 			outTris[i].data = corkTri;
-			//DGM: it seems that Cork doubles this information?!
+			// DGM: it seems that Cork doubles this information?!
 			outTris[i].a = tsi->i1;
 			outTris[i].b = tsi->i2;
 			outTris[i].c = tsi->i3;
 		}
 	}
 
-	//import vertices
+	// import vertices
 	{
 		for (unsigned i = 0; i < vertCount; i++)
 		{
 			const CCVector3* P = vertices->getPoint(i);
-			outVerts[i].pos.x = static_cast<double>(P->x);
-			outVerts[i].pos.y = static_cast<double>(P->y);
-			outVerts[i].pos.z = static_cast<double>(P->z);
+			outVerts[i].pos.x  = static_cast<double>(P->x);
+			outVerts[i].pos.y  = static_cast<double>(P->y);
+			outVerts[i].pos.z  = static_cast<double>(P->z);
 		}
 	}
 
@@ -152,8 +151,8 @@ bool ToCorkMesh(const ccMesh* in, CorkMesh& out, ccMainAppInterface* app = nullp
 
 ccMesh* FromCorkMesh(const CorkMesh& in, ccMainAppInterface* app = nullptr)
 {
-	const std::vector<CorkMesh::Tri>& inTris = in.getTris();
-	const std::vector<CorkVertex>& inVerts = in.getVerts();
+	const std::vector<CorkMesh::Tri>& inTris  = in.getTris();
+	const std::vector<CorkVertex>&    inVerts = in.getVerts();
 
 	if (inTris.empty() || inVerts.empty())
 	{
@@ -162,7 +161,7 @@ ccMesh* FromCorkMesh(const CorkMesh& in, ccMainAppInterface* app = nullptr)
 		return nullptr;
 	}
 
-	unsigned triCount = static_cast<unsigned>(inTris.size());
+	unsigned triCount  = static_cast<unsigned>(inTris.size());
 	unsigned vertCount = static_cast<unsigned>(inVerts.size());
 
 	ccPointCloud* vertices = new ccPointCloud("vertices");
@@ -184,19 +183,19 @@ ccMesh* FromCorkMesh(const CorkMesh& in, ccMainAppInterface* app = nullptr)
 		return nullptr;
 	}
 
-	//import vertices
+	// import vertices
 	{
 		for (unsigned i = 0; i < vertCount; i++)
 		{
 			const CorkVertex& P = inVerts[i];
-			CCVector3 Pout(static_cast<PointCoordinateType>(P.pos.x),
-				static_cast<PointCoordinateType>(P.pos.y),
-				static_cast<PointCoordinateType>(P.pos.z));
+			CCVector3         Pout(static_cast<PointCoordinateType>(P.pos.x),
+                           static_cast<PointCoordinateType>(P.pos.y),
+                           static_cast<PointCoordinateType>(P.pos.z));
 			vertices->addPoint(Pout);
 		}
 	}
 
-	//import triangle indexes
+	// import triangle indexes
 	{
 		for (unsigned i = 0; i < triCount; i++)
 		{
@@ -215,26 +214,27 @@ ccMesh* FromCorkMesh(const CorkMesh& in, ccMainAppInterface* app = nullptr)
 struct BoolOpParameters
 {
 	BoolOpParameters()
-		: operation(ccCorkDlg::UNION)
-		, corkA(nullptr)
-		, corkB(nullptr)
-		, app(nullptr)
-		, meshesAreOk(false)
-	{}
+	    : operation(ccCorkDlg::UNION)
+	    , corkA(nullptr)
+	    , corkB(nullptr)
+	    , app(nullptr)
+	    , meshesAreOk(false)
+	{
+	}
 
 	ccCorkDlg::CSG_OPERATION operation;
-	CorkMesh* corkA;
-	CorkMesh* corkB;
-	QString nameA;
-	QString nameB;
-	ccMainAppInterface* app;
-	bool meshesAreOk;
+	CorkMesh*                corkA;
+	CorkMesh*                corkB;
+	QString                  nameA;
+	QString                  nameB;
+	ccMainAppInterface*      app;
+	bool                     meshesAreOk;
 };
 static BoolOpParameters s_params;
 
 static bool DoPerformBooleanOp()
 {
-	//invalid parameters
+	// invalid parameters
 	if (!s_params.corkA || !s_params.corkB)
 	{
 		assert(false);
@@ -246,7 +246,7 @@ static bool DoPerformBooleanOp()
 		QElapsedTimer timer;
 		timer.start();
 
-		//check meshes
+		// check meshes
 		s_params.meshesAreOk = true;
 		if (false)
 		{
@@ -276,7 +276,7 @@ static bool DoPerformBooleanOp()
 			}
 		}
 
-		//perform the boolean operation
+		// perform the boolean operation
 		switch (s_params.operation)
 		{
 		case ccCorkDlg::UNION:
@@ -298,7 +298,7 @@ static bool DoPerformBooleanOp()
 		default:
 			assert(false);
 			if (s_params.app)
-				s_params.app->dispToConsole("[Cork] Unhandled operation?!", ccMainAppInterface::WRN_CONSOLE_MESSAGE); //DGM: can't issue an error message (i.e. with dialog) in another thread!
+				s_params.app->dispToConsole("[Cork] Unhandled operation?!", ccMainAppInterface::WRN_CONSOLE_MESSAGE); // DGM: can't issue an error message (i.e. with dialog) in another thread!
 			break;
 		}
 
@@ -325,10 +325,10 @@ void qCork::doAction()
 		return;
 
 	const ccHObject::Container& selectedEntities = m_app->getSelectedEntities();
-	size_t selNum = selectedEntities.size();
+	size_t                      selNum           = selectedEntities.size();
 	if (selNum != 2
-		|| !selectedEntities[0]->isKindOf(CC_TYPES::MESH)
-		|| !selectedEntities[1]->isKindOf(CC_TYPES::MESH))
+	    || !selectedEntities[0]->isKindOf(CC_TYPES::MESH)
+	    || !selectedEntities[1]->isKindOf(CC_TYPES::MESH))
 	{
 		assert(false);
 		m_app->dispToConsole("Select two and only two meshes!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -338,7 +338,7 @@ void qCork::doAction()
 	ccMesh* meshA = static_cast<ccMesh*>(selectedEntities[0]);
 	ccMesh* meshB = static_cast<ccMesh*>(selectedEntities[1]);
 
-	//show dialog to let the user choose the operation to perform
+	// show dialog to let the user choose the operation to perform
 	ccCorkDlg cDlg(m_app->getMainWindow());
 	cDlg.setNames(meshA->getName(), meshB->getName());
 	if (!cDlg.exec())
@@ -350,7 +350,7 @@ void qCork::doAction()
 	if (cDlg.isSwapped())
 		std::swap(meshA, meshB);
 
-	//try to convert both meshes to CorkMesh structures
+	// try to convert both meshes to CorkMesh structures
 	CorkMesh corkA;
 	if (!ToCorkMesh(meshA, corkA, m_app))
 		return;
@@ -358,24 +358,24 @@ void qCork::doAction()
 	if (!ToCorkMesh(meshB, corkB, m_app))
 		return;
 
-	//launch process
+	// launch process
 	{
-		//run in a separate thread
+		// run in a separate thread
 		QProgressDialog pDlg("Operation in progress", QString(), 0, 0, m_app->getMainWindow());
 		pDlg.setWindowTitle("Cork");
 		pDlg.show();
 		QApplication::processEvents();
 
-		s_params.app = m_app;
-		s_params.corkA = &corkA;
-		s_params.corkB = &corkB;
-		s_params.nameA = meshA->getName();
-		s_params.nameB = meshB->getName();
+		s_params.app       = m_app;
+		s_params.corkA     = &corkA;
+		s_params.corkB     = &corkB;
+		s_params.nameA     = meshA->getName();
+		s_params.nameB     = meshB->getName();
 		s_params.operation = cDlg.getSelectedOperation();
 
 		QFuture<bool> future = QtConcurrent::run(DoPerformBooleanOp);
 
-		//wait until process is finished!
+		// wait until process is finished!
 		while (!future.isFinished())
 		{
 #if defined(CC_WINDOWS)
@@ -388,8 +388,8 @@ void qCork::doAction()
 			QApplication::processEvents();
 		}
 
-		//just to be sure
-		s_params.app = nullptr;
+		// just to be sure
+		s_params.app   = nullptr;
 		s_params.corkA = s_params.corkB = 0;
 
 		pDlg.hide();
@@ -399,12 +399,12 @@ void qCork::doAction()
 		{
 			if (m_app)
 				m_app->dispToConsole(s_params.meshesAreOk ? "Computation failed!" : "Computation failed! (check console)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-			//an error occurred
+			// an error occurred
 			return;
 		}
 	}
 
-	//convert the updated mesh (A) to a new ccMesh structure
+	// convert the updated mesh (A) to a new ccMesh structure
 	ccMesh* result = FromCorkMesh(corkA);
 
 	if (result)
@@ -413,7 +413,7 @@ void qCork::doAction()
 		if (meshB->getDisplay() == meshA->getDisplay())
 			meshB->setEnabled(false);
 
-		//set name
+		// set name
 		QString opName;
 		switch (cDlg.getSelectedOperation())
 		{
@@ -435,7 +435,7 @@ void qCork::doAction()
 		}
 		result->setName(QString("(%1).%2.(%3)").arg(meshA->getName()).arg(opName).arg(meshB->getName()));
 
-		//normals
+		// normals
 		bool hasNormals = false;
 		if (meshA->hasTriNormals())
 			hasNormals = result->computePerTriangleNormals();
@@ -448,7 +448,7 @@ void qCork::doAction()
 		result->redrawDisplay();
 	}
 
-	//currently selected entities appearance may have changed!
+	// currently selected entities appearance may have changed!
 	m_app->refreshAll();
 
 	if (m_app)

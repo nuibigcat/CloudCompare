@@ -1,40 +1,40 @@
-//##########################################################################
-//#                                                                        #
-//#                              CLOUDCOMPARE                              #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                              CLOUDCOMPARE                              #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
+// #                                                                        #
+// ##########################################################################
 
 #include "FastGlobalRegistrationDlg.h"
 
-//common
+// common
 #include <ccQtHelpers.h>
 
-//qCC_db
+// qCC_db
 #include <ccOctree.h>
 #include <ccPointCloud.h>
 
-//system
+// system
 #include <assert.h>
 
 static double s_featureRadius = 0;
 
-FastGlobalRegistrationDialog::FastGlobalRegistrationDialog(	const std::vector<ccPointCloud*>& allClouds,
-															QWidget* parent/*=nullptr*/)
-	: QDialog(parent, Qt::Tool)
-	, Ui::FastGlobalRegistrationDialog()
-	, clouds(allClouds)
-	, referencesCloudUinqueID(ccUniqueIDGenerator::InvalidUniqueID)
+FastGlobalRegistrationDialog::FastGlobalRegistrationDialog(const std::vector<ccPointCloud*>& allClouds,
+                                                           QWidget*                          parent /*=nullptr*/)
+    : QDialog(parent, Qt::Tool)
+    , Ui::FastGlobalRegistrationDialog()
+    , clouds(allClouds)
+    , referencesCloudUinqueID(ccUniqueIDGenerator::InvalidUniqueID)
 {
 	setupUi(this);
 
@@ -53,15 +53,15 @@ FastGlobalRegistrationDialog::FastGlobalRegistrationDialog(	const std::vector<cc
 
 	updateGUI();
 
-	//restore semi-persistent settings
+	// restore semi-persistent settings
 	{
-		//semi-persistent options
+		// semi-persistent options
 		double previousRadius = s_featureRadius;
 		if (previousRadius == 0)
 		{
 			for (ccPointCloud* cloud : clouds)
 			{
-				double radius = ccOctree::GuessNaiveRadius(cloud);
+				double radius  = ccOctree::GuessNaiveRadius(cloud);
 				previousRadius = std::max(radius, previousRadius);
 			}
 		}
@@ -112,7 +112,7 @@ void FastGlobalRegistrationDialog::updateGUI()
 {
 	if (clouds.size() < 2)
 		return;
-	
+
 	ccPointCloud* referenceCloud = getReferenceCloud();
 	if (!referenceCloud)
 	{
@@ -121,9 +121,9 @@ void FastGlobalRegistrationDialog::updateGUI()
 	}
 
 	// aligned cloud(s)
-	ccPointCloud* alignedCloud = nullptr; //only one of them
-	int referenceCloudIndex = -1;
-	for (size_t i = 0; i< clouds.size(); ++i)
+	ccPointCloud* alignedCloud        = nullptr; // only one of them
+	int           referenceCloudIndex = -1;
+	for (size_t i = 0; i < clouds.size(); ++i)
 	{
 		ccPointCloud* cloud = clouds[i];
 		if (cloud->getUniqueID() != referencesCloudUinqueID)
@@ -168,9 +168,9 @@ void FastGlobalRegistrationDialog::autoEstimateRadius()
 	ccOctree::BestRadiusParams params;
 	{
 		params.aimedPopulationPerCell = 64;
-		params.aimedPopulationRange = 16;
-		params.minCellPopulation = 48;
-		params.minAboveMinRatio = 0.97;
+		params.aimedPopulationRange   = 16;
+		params.minCellPopulation      = 48;
+		params.minAboveMinRatio       = 0.97;
 	}
 
 	PointCoordinateType largestRadius = 0.0;

@@ -1,41 +1,40 @@
 #pragma once
-//##########################################################################
-//#                                                                        #
-//#                              CLOUDCOMPARE                              #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                              CLOUDCOMPARE                              #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #          COPYRIGHT: EDF R&D / TELECOM ParisTech (ENST-TSI)             #
+// #                                                                        #
+// ##########################################################################
 
 #include "qCC_glWindow.h"
 
-//Qt
+// Qt
 #include <QString>
 
-//qCC_db
+// qCC_db
 #include <ccColorTypes.h>
 
 /***************************************************
-				GUI parameters
+                GUI parameters
 ***************************************************/
 
 //! This class manages some persistent parameters (mostly for display)
 /** Values of persistent parameters are stored by the system
-	(either in the registry or in a separate file depending on the OS).
+    (either in the registry or in a separate file depending on the OS).
 **/
 class CCGLWINDOW_LIB_API ccGui
 {
-public:
-
+  public:
 	//! GUI parameters
 	struct CCGLWINDOW_LIB_API ParamStruct
 	{
@@ -67,7 +66,7 @@ public:
 		ccColor::Rgba labelMarkerCol;
 		//! Bounding-boxes color
 		ccColor::Rgba bbDefaultCol;
-		
+
 		//! Use background gradient
 		bool drawBackgroundGradient;
 		//! Decimate meshes when moved
@@ -108,7 +107,12 @@ public:
 		double zoomSpeed;
 
 		//! Octree computation (for picking) behaviors
-		enum ComputeOctreeForPicking { ALWAYS = 0, ASK_USER = 1, NEVER = 2 };
+		enum ComputeOctreeForPicking
+		{
+			ALWAYS   = 0,
+			ASK_USER = 1,
+			NEVER    = 2
+		};
 
 		//! Octree computation (for picking) behavior
 		ComputeOctreeForPicking autoComputeOctree;
@@ -116,7 +120,7 @@ public:
 		//! Whether to draw rounded points (slower) or not
 		bool drawRoundedPoints;
 
-		//! Whether to pick objects by single clicking in the GUI 
+		//! Whether to pick objects by single clicking in the GUI
 		//! can be slow with large point clouds/large number of objects
 		bool singleClickPicking;
 
@@ -137,7 +141,7 @@ public:
 
 		//! Returns whether a given parameter is already defined in persistent settings or not
 		/** \param paramName the corresponding attribute name
-		**/
+		 **/
 		bool isInPersistentSettings(QString paramName) const;
 	};
 
@@ -150,9 +154,7 @@ public:
 	//! Release unique instance (if any)
 	static void ReleaseInstance();
 
-protected:
-
+  protected:
 	//! Parameters set
 	ParamStruct params;
-
 };

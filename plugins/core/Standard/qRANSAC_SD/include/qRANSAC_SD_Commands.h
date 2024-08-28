@@ -1,62 +1,65 @@
-//##########################################################################
-//#                                                                        #
-//#                      CLOUDCOMPARE PLUGIN: qRANSAC_SD                   #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                         COPYRIGHT: Chris S Brown                       #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                      CLOUDCOMPARE PLUGIN: qRANSAC_SD                   #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                         COPYRIGHT: Chris S Brown                       #
+// #                                                                        #
+// ##########################################################################
 
 #ifndef RANSAC_PLUGIN_COMMANDS_HEADER
 #define RANSAC_PLUGIN_COMMANDS_HEADER
 
 #include <QDir>
 
-//CloudCompare
+// CloudCompare
 #include "ccCommandLineInterface.h"
-#include <ccMesh.h>
-#include <ccGenericMesh.h>
 
-//Local
+#include <ccGenericMesh.h>
+#include <ccMesh.h>
+
+// Local
 #include "qRANSAC_SD.h"
 
-constexpr char COMMAND_RANSAC[] = "RANSAC";
-constexpr char EPSILON_ABSOLUTE[] = "EPSILON_ABSOLUTE";
-constexpr char EPSILON_PERCENTAGE_OF_SCALE[] = "EPSILON_PERCENTAGE_OF_SCALE";
-constexpr char BITMAP_EPSILON_PERCENTAGE_OF_SCALE[] = "BITMAP_EPSILON_PERCENTAGE_OF_SCALE";
-constexpr char BITMAP_EPSILON_ABSOLUTE[] = "BITMAP_EPSILON_ABSOLUTE";
-constexpr char SUPPORT_POINTS[] = "SUPPORT_POINTS";
-constexpr char MAX_NORMAL_DEV[] = "MAX_NORMAL_DEV";
-constexpr char PROBABILITY[] = "PROBABILITY";
-constexpr char ENABLE_PRIMITIVE[] = "ENABLE_PRIMITIVE";
-constexpr char OUT_CLOUD_DIR[] = "OUT_CLOUD_DIR";
-constexpr char OUT_MESH_DIR[] = "OUT_MESH_DIR";
-constexpr char OUT_PAIR_DIR[] = "OUT_PAIR_DIR";
-constexpr char OUT_GROUP_DIR[] = "OUT_GROUP_DIR";
-constexpr char OUT_RANDOM_COLOR[] = "OUT_RANDOM_COLOR";
-constexpr char OUTPUT_INDIVIDUAL_PRIMITIVES[] = "OUTPUT_INDIVIDUAL_PRIMITIVES";
-constexpr char OUTPUT_INDIVIDUAL_SUBCLOUDS[] = "OUTPUT_INDIVIDUAL_SUBCLOUDS";
+constexpr char COMMAND_RANSAC[]                           = "RANSAC";
+constexpr char EPSILON_ABSOLUTE[]                         = "EPSILON_ABSOLUTE";
+constexpr char EPSILON_PERCENTAGE_OF_SCALE[]              = "EPSILON_PERCENTAGE_OF_SCALE";
+constexpr char BITMAP_EPSILON_PERCENTAGE_OF_SCALE[]       = "BITMAP_EPSILON_PERCENTAGE_OF_SCALE";
+constexpr char BITMAP_EPSILON_ABSOLUTE[]                  = "BITMAP_EPSILON_ABSOLUTE";
+constexpr char SUPPORT_POINTS[]                           = "SUPPORT_POINTS";
+constexpr char MAX_NORMAL_DEV[]                           = "MAX_NORMAL_DEV";
+constexpr char PROBABILITY[]                              = "PROBABILITY";
+constexpr char ENABLE_PRIMITIVE[]                         = "ENABLE_PRIMITIVE";
+constexpr char OUT_CLOUD_DIR[]                            = "OUT_CLOUD_DIR";
+constexpr char OUT_MESH_DIR[]                             = "OUT_MESH_DIR";
+constexpr char OUT_PAIR_DIR[]                             = "OUT_PAIR_DIR";
+constexpr char OUT_GROUP_DIR[]                            = "OUT_GROUP_DIR";
+constexpr char OUT_RANDOM_COLOR[]                         = "OUT_RANDOM_COLOR";
+constexpr char OUTPUT_INDIVIDUAL_PRIMITIVES[]             = "OUTPUT_INDIVIDUAL_PRIMITIVES";
+constexpr char OUTPUT_INDIVIDUAL_SUBCLOUDS[]              = "OUTPUT_INDIVIDUAL_SUBCLOUDS";
 constexpr char OUTPUT_INDIVIDUAL_PAIRED_CLOUD_PRIMITIVE[] = "OUTPUT_INDIVIDUAL_PAIRED_CLOUD_PRIMITIVE";
-constexpr char OUTPUT_GROUPED[] = "OUTPUT_GROUPED";
+constexpr char OUTPUT_GROUPED[]                           = "OUTPUT_GROUPED";
 
-constexpr char PRIM_PLANE[] = "PLANE";
-constexpr char PRIM_SPHERE[] = "SPHERE";
+constexpr char PRIM_PLANE[]    = "PLANE";
+constexpr char PRIM_SPHERE[]   = "SPHERE";
 constexpr char PRIM_CYLINDER[] = "CYLINDER";
-constexpr char PRIM_CONE[] = "CONE";
-constexpr char PRIM_TORUS[] = "TORUS";
-
+constexpr char PRIM_CONE[]     = "CONE";
+constexpr char PRIM_TORUS[]    = "TORUS";
 
 struct CommandRANSAC : public ccCommandLineInterface::Command
 {
-	CommandRANSAC() : ccCommandLineInterface::Command(QObject::tr("RANSAC"), COMMAND_RANSAC) {}
+	CommandRANSAC()
+	    : ccCommandLineInterface::Command(QObject::tr("RANSAC"), COMMAND_RANSAC)
+	{
+	}
 
 	virtual bool process(ccCommandLineInterface& cmd) override
 	{
@@ -65,28 +68,24 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 			return cmd.error(QObject::tr("No point cloud to attempt RANSAC on (be sure to open one with \"-O [cloud filename]\" before \"-%2\")").arg(COMMAND_RANSAC));
 		}
 		qRansacSD::RansacParams params;
-		QStringList paramNames = QStringList() << EPSILON_ABSOLUTE << EPSILON_PERCENTAGE_OF_SCALE <<
-			BITMAP_EPSILON_PERCENTAGE_OF_SCALE << BITMAP_EPSILON_ABSOLUTE <<
-			SUPPORT_POINTS << MAX_NORMAL_DEV << PROBABILITY << ENABLE_PRIMITIVE <<
-			OUT_CLOUD_DIR << OUT_MESH_DIR << OUT_GROUP_DIR << OUT_PAIR_DIR << OUT_RANDOM_COLOR << OUTPUT_INDIVIDUAL_PRIMITIVES <<
-			OUTPUT_INDIVIDUAL_SUBCLOUDS << OUTPUT_GROUPED << OUTPUT_INDIVIDUAL_PAIRED_CLOUD_PRIMITIVE;
-		QStringList primitiveNames = QStringList() << PRIM_PLANE << PRIM_SPHERE << PRIM_CYLINDER << PRIM_CONE << PRIM_TORUS;
-		QString outputCloudsDir;
-		QString outputMeshesDir;
-		QString outputPairDir;
-		QString outputGroupDir;
-		bool outputIndividualClouds = false;
-		bool outputIndividualPrimitives = false;
-		bool outputIndividualPairs = false;
-		bool outputGrouped = false;
+		QStringList             paramNames     = QStringList() << EPSILON_ABSOLUTE << EPSILON_PERCENTAGE_OF_SCALE << BITMAP_EPSILON_PERCENTAGE_OF_SCALE << BITMAP_EPSILON_ABSOLUTE << SUPPORT_POINTS << MAX_NORMAL_DEV << PROBABILITY << ENABLE_PRIMITIVE << OUT_CLOUD_DIR << OUT_MESH_DIR << OUT_GROUP_DIR << OUT_PAIR_DIR << OUT_RANDOM_COLOR << OUTPUT_INDIVIDUAL_PRIMITIVES << OUTPUT_INDIVIDUAL_SUBCLOUDS << OUTPUT_GROUPED << OUTPUT_INDIVIDUAL_PAIRED_CLOUD_PRIMITIVE;
+		QStringList             primitiveNames = QStringList() << PRIM_PLANE << PRIM_SPHERE << PRIM_CYLINDER << PRIM_CONE << PRIM_TORUS;
+		QString                 outputCloudsDir;
+		QString                 outputMeshesDir;
+		QString                 outputPairDir;
+		QString                 outputGroupDir;
+		bool                    outputIndividualClouds     = false;
+		bool                    outputIndividualPrimitives = false;
+		bool                    outputIndividualPairs      = false;
+		bool                    outputGrouped              = false;
 
-		float epsilonABS = -1.0f;
-		float epsilonPercentage = -1.0f;
-		float bitmapEpsilonABS = -1.0f;
+		float epsilonABS              = -1.0f;
+		float epsilonPercentage       = -1.0f;
+		float bitmapEpsilonABS        = -1.0f;
 		float bitmapEpsilonPercentage = -1.0f;
-		params.epsilon = -1.0f;
-		params.bitmapEpsilon = -1.0f;
-		params.randomColor = false;
+		params.epsilon                = -1.0f;
+		params.bitmapEpsilon          = -1.0f;
+		params.randomColor            = false;
 
 		for (unsigned char k = 0; k < 5; ++k)
 		{
@@ -106,7 +105,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					{
 						return cmd.error(QObject::tr("Missing parameter: number after \"-%1 %2\"").arg(COMMAND_RANSAC, EPSILON_ABSOLUTE));
 					}
-					bool ok;
+					bool  ok;
 					float val = cmd.arguments().takeFirst().toFloat(&ok);
 					if (!ok)
 					{
@@ -121,7 +120,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					{
 						return cmd.error(QObject::tr("Missing parameter: number after \"-%1 %2\"").arg(COMMAND_RANSAC, EPSILON_PERCENTAGE_OF_SCALE));
 					}
-					bool ok;
+					bool  ok;
 					float val = cmd.arguments().takeFirst().toFloat(&ok);
 					if (!ok || (val <= 0.0f || val >= 1.0f))
 					{
@@ -136,7 +135,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					{
 						return cmd.error(QObject::tr("Missing parameter: number after \"-%1 %2\"").arg(COMMAND_RANSAC, BITMAP_EPSILON_ABSOLUTE));
 					}
-					bool ok;
+					bool  ok;
 					float val = cmd.arguments().takeFirst().toFloat(&ok);
 					if (!ok)
 					{
@@ -151,7 +150,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					{
 						return cmd.error(QObject::tr("Missing parameter: number after \"-%1 %2\"").arg(COMMAND_RANSAC, BITMAP_EPSILON_PERCENTAGE_OF_SCALE));
 					}
-					bool ok;
+					bool  ok;
 					float val = cmd.arguments().takeFirst().toFloat(&ok);
 					if (!ok || (val <= 0.0f || val >= 1.0f))
 					{
@@ -166,7 +165,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					{
 						return cmd.error(QObject::tr("Missing parameter: number after \"-%1 %2\"").arg(COMMAND_RANSAC, SUPPORT_POINTS));
 					}
-					bool ok;
+					bool     ok;
 					unsigned count = cmd.arguments().takeFirst().toUInt(&ok);
 					if (!ok)
 					{
@@ -181,7 +180,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					{
 						return cmd.error(QObject::tr("Missing parameter: number after \"-%1 %2\"").arg(COMMAND_RANSAC, MAX_NORMAL_DEV));
 					}
-					bool ok;
+					bool  ok;
 					float val = cmd.arguments().takeFirst().toFloat(&ok);
 					if (!ok)
 					{
@@ -196,7 +195,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					{
 						return cmd.error(QObject::tr("Missing parameter: number after \"-%1 %2\"").arg(COMMAND_RANSAC, PROBABILITY));
 					}
-					bool ok;
+					bool  ok;
 					float val = cmd.arguments().takeFirst().toFloat(&ok);
 					if (!ok)
 					{
@@ -235,7 +234,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					if (!makePathIfPossible(cmd, param, &outputPairDir, &outputIndividualPairs))
 					{
 						return false;
-					}				
+					}
 				}
 				else if (param == OUTPUT_INDIVIDUAL_SUBCLOUDS)
 				{
@@ -259,7 +258,7 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 					{
 						return cmd.error(QObject::tr("Missing parameter: primitive type after \"-%1 %2\"").arg(COMMAND_RANSAC, ENABLE_PRIMITIVE));
 					}
-					QString prim = cmd.arguments().takeFirst().toUpper();
+					QString  prim      = cmd.arguments().takeFirst().toUpper();
 					unsigned primCount = 0;
 					while (primitiveNames.contains(prim))
 					{
@@ -338,8 +337,8 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 
 			CCVector3 bbMin, bbMax;
 			clCloud.pc->getBoundingBox(bbMin, bbMax);
-			CCVector3 diff = bbMax - bbMin;
-			float scale = std::max(std::max(diff[0], diff[1]), diff[2]);
+			CCVector3 diff  = bbMax - bbMin;
+			float     scale = std::max(std::max(diff[0], diff[1]), diff[2]);
 			if (epsilonPercentage > 0.0f)
 			{
 				params.epsilon = (epsilonPercentage * scale);
@@ -366,13 +365,13 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 			}
 
 			ccHObject* group = qRansacSD::executeRANSAC(clCloud.pc, params, cmd.silentMode());
-			
+
 			if (group)
 			{
 				if (outputGrouped)
 				{
 					CLGroupDesc clGroup(group, clCloud.basename + "_" + clCloud.pc->getName() + "_RANSAC_DETECTED_SHAPES", outputGroupDir != "" ? outputGroupDir : clCloud.path);
-					QString errorStr = cmd.exportEntity(clGroup, QString(), nullptr, ccCommandLineInterface::ExportOption::ForceHierarchy);
+					QString     errorStr = cmd.exportEntity(clGroup, QString(), nullptr, ccCommandLineInterface::ExportOption::ForceHierarchy);
 					if (!errorStr.isEmpty())
 					{
 						cmd.warning(errorStr);
@@ -381,12 +380,12 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 				if (outputIndividualPrimitives || outputIndividualClouds || outputIndividualPairs)
 				{
 					ccHObject::Container meshGroup;
-					unsigned meshCount = group->filterChildren(meshGroup, true, CC_TYPES::MESH);
-					unsigned planeCount = 1;
-					unsigned sphereCount = 1;
-					unsigned cylinderCount = 1;
-					unsigned coneCount = 1;
-					unsigned torusCount = 1;
+					unsigned             meshCount     = group->filterChildren(meshGroup, true, CC_TYPES::MESH);
+					unsigned             planeCount    = 1;
+					unsigned             sphereCount   = 1;
+					unsigned             cylinderCount = 1;
+					unsigned             coneCount     = 1;
+					unsigned             torusCount    = 1;
 
 					for (auto meshObj : meshGroup)
 					{
@@ -423,11 +422,11 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 							if (outputIndividualPairs)
 							{
 								CLGroupDesc clPair(cld, clCloud.basename + "_" + clCloud.pc->getName() + suffix + QString("_pair"), outputPairDir.isEmpty() ? clCloud.path : outputPairDir);
-								QString errorStr = cmd.exportEntity(clPair, QString(), nullptr, ccCommandLineInterface::ExportOption::ForceHierarchy);
+								QString     errorStr = cmd.exportEntity(clPair, QString(), nullptr, ccCommandLineInterface::ExportOption::ForceHierarchy);
 								if (!errorStr.isEmpty())
 								{
 									cmd.warning(errorStr);
-								}							
+								}
 							}
 							if (cld)
 							{
@@ -467,19 +466,18 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 			}
 		}
 
-
 		return true;
 	}
 
-	bool makePathIfPossible(ccCommandLineInterface& cmd, const QString &param, QString *outputPath, bool *performOutput)
+	bool makePathIfPossible(ccCommandLineInterface& cmd, const QString& param, QString* outputPath, bool* performOutput)
 	{
 		if (cmd.arguments().empty())
 		{
 			return cmd.error(QObject::tr("\nMissing parameter: Directory after \"-%1 %2\"").arg(COMMAND_RANSAC, param));
 		}
 		QString arg = cmd.arguments().takeFirst();
-		QDir dir(arg);
-		bool pathExists = dir.exists();
+		QDir    dir(arg);
+		bool    pathExists = dir.exists();
 		if (!pathExists)
 		{
 			cmd.print(QObject::tr("\n%1 Does not exist\tcreating path").arg(arg));
@@ -497,7 +495,6 @@ struct CommandRANSAC : public ccCommandLineInterface::Command
 		}
 		return true;
 	}
-
 };
 
-#endif //RANSAC_PLUGIN_COMMANDS_HEADER
+#endif // RANSAC_PLUGIN_COMMANDS_HEADER

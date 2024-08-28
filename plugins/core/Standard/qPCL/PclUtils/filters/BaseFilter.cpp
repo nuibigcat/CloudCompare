@@ -1,40 +1,40 @@
-//##########################################################################
-//#                                                                        #
-//#                       CLOUDCOMPARE PLUGIN: qPCL                        #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                         COPYRIGHT: Luca Penasa                         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                       CLOUDCOMPARE PLUGIN: qPCL                        #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                         COPYRIGHT: Luca Penasa                         #
+// #                                                                        #
+// ##########################################################################
 //
 #include "BaseFilter.h"
 
-//qCC_db
-#include <ccPointCloud.h>
+// qCC_db
 #include <ccHObjectCaster.h>
+#include <ccPointCloud.h>
 
-//CCCoreLib
+// CCCoreLib
 #include <CCPlatform.h>
 
-//qCC
+// qCC
 #include <ccMainAppInterface.h>
 
-//Qt
+// Qt
 #include <QAction>
-#include <QFuture>
 #include <QApplication>
+#include <QFuture>
 #include <QProgressDialog>
 #include <qtconcurrentrun.h>
 
-//system
+// system
 #if defined(CC_WINDOWS)
 #include "windows.h"
 #else
@@ -43,14 +43,14 @@
 #endif
 
 BaseFilter::BaseFilter(FilterDescription desc, ccMainAppInterface* app)
-	: m_desc(desc)
-	, m_action(new QAction(desc.icon, desc.entryName, this))
-	, m_app(app)
-	, m_showProgress(true)
+    : m_desc(desc)
+    , m_action(new QAction(desc.icon, desc.entryName, this))
+    , m_app(app)
+    , m_showProgress(true)
 {
 	m_action->setStatusTip(m_desc.statusTip);
 
-	//connect this action
+	// connect this action
 	connect(m_action, &QAction::triggered, this, &BaseFilter::performAction);
 }
 
@@ -65,7 +65,7 @@ void BaseFilter::throwError(int errCode)
 	}
 	else if (errCode < 0)
 	{
-		//DGM: as libraries shouldn't issue message themselves, it should be sent to the plugin via a signal
+		// DGM: as libraries shouldn't issue message themselves, it should be sent to the plugin via a signal
 		Q_EMIT newErrorMessage(errMsg);
 	}
 }
@@ -82,7 +82,7 @@ void BaseFilter::updateSelectedEntities(const ccHObject::Container& selectedEnti
 
 void BaseFilter::performAction()
 {
-	//check if selected entities are good
+	// check if selected entities are good
 	if (!checkSelected())
 	{
 		assert(false);
@@ -90,7 +90,7 @@ void BaseFilter::performAction()
 		return;
 	}
 
-	//get parameters from the dialog (if any)
+	// get parameters from the dialog (if any)
 	int result = getParametersFromDialog();
 	if (result != Success)
 	{
@@ -98,7 +98,7 @@ void BaseFilter::performAction()
 		return;
 	}
 
-	//if so, go ahead with start()
+	// if so, go ahead with start()
 	result = start();
 	if (result != Success)
 	{
@@ -113,8 +113,8 @@ bool BaseFilter::checkSelected() const
 	return (m_selectedEntities.size() == 1 && m_selectedEntities.front()->isA(CC_TYPES::POINT_CLOUD));
 }
 
-static BaseFilter* s_filter = nullptr;
-static int s_computeStatus = BaseFilter::ComputationError;
+static BaseFilter* s_filter        = nullptr;
+static int         s_computeStatus = BaseFilter::ComputationError;
 
 static void DoCompute()
 {
@@ -145,11 +145,11 @@ int BaseFilter::start()
 	}
 
 	s_computeStatus = ComputationError;
-	s_filter = this;
-	s_computing = true;
+	s_filter        = this;
+	s_computing     = true;
 
-	QFuture<void> future = QtConcurrent::run(DoCompute);
-	int progress = 0;
+	QFuture<void> future   = QtConcurrent::run(DoCompute);
+	int           progress = 0;
 	while (!future.isFinished())
 	{
 #if defined(CC_WINDOWS)
@@ -162,9 +162,9 @@ int BaseFilter::start()
 			pDlg.setValue(++progress);
 		}
 	}
-	
-	int result = s_computeStatus;
-	s_filter = nullptr;
+
+	int result  = s_computeStatus;
+	s_filter    = nullptr;
 	s_computing = false;
 
 	if (m_showProgress)
@@ -226,7 +226,7 @@ ccPointCloud* BaseFilter::getFirstSelectedEntityAsCCPointCloud() const
 
 ccHObject* BaseFilter::getFirstSelectedEntity() const
 {
-	//do we have any selected entity?
+	// do we have any selected entity?
 	if (m_selectedEntities.empty())
 		return nullptr;
 

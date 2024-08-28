@@ -1,21 +1,21 @@
 #pragma once
 
-//##########################################################################
-//#                                                                        #
-//#                      CLOUDCOMPARE PLUGIN: qSRA                         #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                           COPYRIGHT: EDF                               #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                      CLOUDCOMPARE PLUGIN: qSRA                         #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                           COPYRIGHT: EDF                               #
+// #                                                                        #
+// ##########################################################################
 
 #include "ccStdPluginInterface.h"
 
@@ -23,26 +23,25 @@ class ccPointCloud;
 class ccPolyline;
 
 //! Surface of Revolution Analysis plugin
-class qSRA : public QObject, public ccStdPluginInterface
+class qSRA : public QObject
+    , public ccStdPluginInterface
 {
 	Q_OBJECT
-	Q_INTERFACES( ccPluginInterface ccStdPluginInterface )
-	
-	Q_PLUGIN_METADATA( IID "cccorp.cloudcompare.plugin.qSRA" FILE "../info.json" )
+	Q_INTERFACES(ccPluginInterface ccStdPluginInterface)
 
-public:
+	Q_PLUGIN_METADATA(IID "cccorp.cloudcompare.plugin.qSRA" FILE "../info.json")
 
+  public:
 	//! Default constructor
 	explicit qSRA(QObject* parent = nullptr);
 
 	virtual ~qSRA() = default;
 
-	//inherited from ccStdPluginInterface
-	virtual void onNewSelection(const ccHObject::Container& selectedEntities) override;
-	virtual QList<QAction *> getActions() override;
+	// inherited from ccStdPluginInterface
+	virtual void            onNewSelection(const ccHObject::Container& selectedEntities) override;
+	virtual QList<QAction*> getActions() override;
 
-protected:
-
+  protected:
 	//! Loads profile from a dedicated file
 	void loadProfile() const;
 
@@ -52,8 +51,7 @@ protected:
 	//! Projects the cloud distances into a 2D grid
 	void projectCloudDistsInGrid() const;
 
-protected:
-
+  protected:
 	//! Projects the cloud distances into a 2D grid (needs the revolution profile)
 	void doProjectCloudDistsInGrid(ccPointCloud* cloud, ccPolyline* polyline) const;
 

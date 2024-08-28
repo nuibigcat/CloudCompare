@@ -1,44 +1,44 @@
-//##########################################################################
-//#                                                                        #
-//#                CLOUDCOMPARE PLUGIN: qPoissonRecon                      #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#                  COPYRIGHT: Daniel Girardeau-Montaut                   #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                CLOUDCOMPARE PLUGIN: qPoissonRecon                      #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #                  COPYRIGHT: Daniel Girardeau-Montaut                   #
+// #                                                                        #
+// ##########################################################################
 
 #include "qPoissonRecon.h"
 
-//dialog
+// dialog
 #include "ui_poissonReconParamDlg.h"
 
-//Qt
+// Qt
 #include <QDialog>
 #include <QInputDialog>
 #include <QMainWindow>
 #include <QProgressDialog>
-#include <QtCore>
 #include <QtConcurrentRun>
+#include <QtCore>
 #include <QtGui>
 
-//PoissonRecon
+// PoissonRecon
 #include <PoissonReconLib.h>
 
-//qCC_db
-#include <ccPointCloud.h>
+// qCC_db
 #include <ccMesh.h>
+#include <ccPointCloud.h>
 #include <ccProgressDialog.h>
 #include <ccScalarField.h>
 
-//System
+// System
 #if defined(CC_WINDOWS)
 #include "Windows.h"
 #else
@@ -49,12 +49,24 @@
 template <typename Real>
 class PointCloudWrapper : public PoissonReconLib::ICloud<Real>
 {
-public:
-	explicit PointCloudWrapper( const ccPointCloud& cloud ) : m_cloud(cloud) {}
+  public:
+	explicit PointCloudWrapper(const ccPointCloud& cloud)
+	    : m_cloud(cloud)
+	{
+	}
 
-	virtual size_t size() const { return m_cloud.size(); }
-	virtual bool hasNormals() const { return m_cloud.hasNormals(); }
-	virtual bool hasColors() const { return m_cloud.hasColors(); }
+	virtual size_t size() const
+	{
+		return m_cloud.size();
+	}
+	virtual bool hasNormals() const
+	{
+		return m_cloud.hasNormals();
+	}
+	virtual bool hasColors() const
+	{
+		return m_cloud.hasColors();
+	}
 	virtual void getPoint(size_t index, Real* coords) const
 	{
 		if (index >= m_cloud.size())
@@ -62,11 +74,11 @@ public:
 			assert(false);
 			return;
 		}
-		//point
+		// point
 		const CCVector3* P = m_cloud.getPoint(static_cast<unsigned>(index));
-		coords[0] = static_cast<Real>(P->x);
-		coords[1] = static_cast<Real>(P->y);
-		coords[2] = static_cast<Real>(P->z);
+		coords[0]          = static_cast<Real>(P->x);
+		coords[1]          = static_cast<Real>(P->y);
+		coords[2]          = static_cast<Real>(P->z);
 	}
 
 	virtual void getNormal(size_t index, Real* coords) const
@@ -78,11 +90,11 @@ public:
 		}
 
 		const CCVector3& N = m_cloud.getPointNormal(static_cast<unsigned>(index));
-		coords[0] = static_cast<Real>(N.x);
-		coords[1] = static_cast<Real>(N.y);
-		coords[2] = static_cast<Real>(N.z);
+		coords[0]          = static_cast<Real>(N.x);
+		coords[1]          = static_cast<Real>(N.y);
+		coords[2]          = static_cast<Real>(N.z);
 	}
-	
+
 	virtual void getColor(size_t index, Real* rgb) const
 	{
 		if (index >= m_cloud.size() || !m_cloud.hasColors())
@@ -92,31 +104,32 @@ public:
 		}
 
 		const ccColor::Rgb& color = m_cloud.getPointColor(static_cast<unsigned>(index));
-		rgb[0] = static_cast<Real>(color.r);
-		rgb[1] = static_cast<Real>(color.g);
-		rgb[2] = static_cast<Real>(color.b);
+		rgb[0]                    = static_cast<Real>(color.r);
+		rgb[1]                    = static_cast<Real>(color.g);
+		rgb[2]                    = static_cast<Real>(color.b);
 	}
 
-protected:
+  protected:
 	const ccPointCloud& m_cloud;
 };
 
 template <typename Real>
 class MeshWrapper : public PoissonReconLib::IMesh<Real>
 {
-public:
+  public:
 	explicit MeshWrapper(ccMesh& mesh, ccPointCloud& vertices, CCCoreLib::ScalarField* densitySF = nullptr)
-		: m_mesh(mesh)
-		, m_vertices(vertices)
-		, m_densitySF(densitySF)
-		, m_error(false)
-	{}
+	    : m_mesh(mesh)
+	    , m_vertices(vertices)
+	    , m_densitySF(densitySF)
+	    , m_error(false)
+	{
+	}
 
 	bool checkMeshCapacity()
 	{
 		if (m_error)
 		{
-			//no need to go further
+			// no need to go further
 			return false;
 		}
 		if (m_mesh.size() == m_mesh.capacity() && !m_mesh.reserve(m_mesh.size() + 1024))
@@ -131,7 +144,7 @@ public:
 	{
 		if (m_error)
 		{
-			//no need to go further
+			// no need to go further
 			return false;
 		}
 		if (m_vertices.size() == m_vertices.capacity() && !m_vertices.reserve(m_vertices.size() + 4096))
@@ -181,9 +194,9 @@ public:
 				return;
 			}
 		}
-		m_vertices.addColor(	static_cast<ColorCompType>(std::min((Real)255, std::max((Real)0, rgb[0]))),
-								static_cast<ColorCompType>(std::min((Real)255, std::max((Real)0, rgb[1]))),
-								static_cast<ColorCompType>(std::min((Real)255, std::max((Real)0, rgb[2]))) );
+		m_vertices.addColor(static_cast<ColorCompType>(std::min((Real)255, std::max((Real)0, rgb[0]))),
+		                    static_cast<ColorCompType>(std::min((Real)255, std::max((Real)0, rgb[1]))),
+		                    static_cast<ColorCompType>(std::min((Real)255, std::max((Real)0, rgb[2]))));
 	}
 
 	virtual void addDensity(double d) override
@@ -209,22 +222,26 @@ public:
 		m_mesh.addTriangle(static_cast<unsigned>(i1), static_cast<unsigned>(i2), static_cast<unsigned>(i3));
 	}
 
-	bool isInErrorState() const { return m_error; }
+	bool isInErrorState() const
+	{
+		return m_error;
+	}
 
-protected:
-	ccMesh& m_mesh;
-	ccPointCloud& m_vertices;
-	bool m_error;
+  protected:
+	ccMesh&                 m_mesh;
+	ccPointCloud&           m_vertices;
+	bool                    m_error;
 	CCCoreLib::ScalarField* m_densitySF;
 };
 
-//dialog for qPoissonRecon plugin
-class PoissonReconParamDlg : public QDialog, public Ui::PoissonReconParamDialog
+// dialog for qPoissonRecon plugin
+class PoissonReconParamDlg : public QDialog
+    , public Ui::PoissonReconParamDialog
 {
-public:
+  public:
 	explicit PoissonReconParamDlg(QWidget* parent = nullptr)
-		: QDialog(parent, Qt::Tool)
-		, Ui::PoissonReconParamDialog()
+	    : QDialog(parent, Qt::Tool)
+	    , Ui::PoissonReconParamDialog()
 	{
 		setupUi(this);
 
@@ -232,43 +249,43 @@ public:
 	}
 };
 
-qPoissonRecon::qPoissonRecon(QObject* parent/*=nullptr*/)
-	: QObject(parent)
-	, ccStdPluginInterface(":/CC/plugin/qPoissonRecon/info.json")
-	, m_action(nullptr)
+qPoissonRecon::qPoissonRecon(QObject* parent /*=nullptr*/)
+    : QObject(parent)
+    , ccStdPluginInterface(":/CC/plugin/qPoissonRecon/info.json")
+    , m_action(nullptr)
 {
 }
 
 void qPoissonRecon::onNewSelection(const ccHObject::Container& selectedEntities)
 {
 	if (m_action)
-		m_action->setEnabled(selectedEntities.size()==1 && selectedEntities[0]->isA(CC_TYPES::POINT_CLOUD));
+		m_action->setEnabled(selectedEntities.size() == 1 && selectedEntities[0]->isA(CC_TYPES::POINT_CLOUD));
 }
 
-QList<QAction *> qPoissonRecon::getActions()
+QList<QAction*> qPoissonRecon::getActions()
 {
-	//default action
+	// default action
 	if (!m_action)
 	{
-		m_action = new QAction(getName(),this);
+		m_action = new QAction(getName(), this);
 		m_action->setToolTip(getDescription());
 		m_action->setIcon(getIcon());
-		//connect signal
+		// connect signal
 		connect(m_action, &QAction::triggered, this, &qPoissonRecon::doAction);
 	}
 
-	return QList<QAction *>{ m_action };
+	return QList<QAction*>{m_action};
 }
 
 static PoissonReconLib::Parameters s_params;
-static ccPointCloud* s_cloud = nullptr;
-static ccMesh* s_mesh = nullptr;
-static ccPointCloud* s_meshVertices = nullptr;
-static CCCoreLib::ScalarField* s_densitySF = nullptr;
+static ccPointCloud*               s_cloud        = nullptr;
+static ccMesh*                     s_mesh         = nullptr;
+static ccPointCloud*               s_meshVertices = nullptr;
+static CCCoreLib::ScalarField*     s_densitySF    = nullptr;
 
 bool doReconstruct()
 {
-	//invalid parameters
+	// invalid parameters
 	if (!s_cloud || !s_mesh || !s_meshVertices)
 	{
 		return false;
@@ -277,9 +294,9 @@ bool doReconstruct()
 	QElapsedTimer timer;
 	timer.start();
 
-	MeshWrapper<PointCoordinateType> meshWrapper(*s_mesh, *s_meshVertices, s_densitySF);
+	MeshWrapper<PointCoordinateType>       meshWrapper(*s_mesh, *s_meshVertices, s_densitySF);
 	PointCloudWrapper<PointCoordinateType> cloudWrapper(*s_cloud);
-	
+
 	if (!PoissonReconLib::Reconstruct(s_params, cloudWrapper, meshWrapper) || meshWrapper.isInErrorState())
 	{
 		return false;
@@ -299,14 +316,14 @@ void qPoissonRecon::doAction()
 		return;
 	}
 
-	//we need one point cloud
+	// we need one point cloud
 	if (!m_app->haveOneSelection())
 	{
 		m_app->dispToConsole("Select only one cloud!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
 
-	//a real point cloud
+	// a real point cloud
 	const ccHObject::Container& selectedEntities = m_app->getSelectedEntities();
 
 	ccHObject* ent = selectedEntities[0];
@@ -316,7 +333,7 @@ void qPoissonRecon::doAction()
 		return;
 	}
 
-	//with normals!
+	// with normals!
 	ccPointCloud* pc = static_cast<ccPointCloud*>(ent);
 	if (!pc->hasNormals())
 	{
@@ -324,16 +341,16 @@ void qPoissonRecon::doAction()
 		return;
 	}
 
-	static unsigned s_lastEntityID = 0;
-	static double s_defaultResolution = 0.0;
-	static bool s_depthMode = true;
+	static unsigned s_lastEntityID      = 0;
+	static double   s_defaultResolution = 0.0;
+	static bool     s_depthMode         = true;
 	if (s_defaultResolution == 0.0 || s_lastEntityID != pc->getUniqueID())
 	{
 		s_defaultResolution = pc->getOwnBB().getDiagNormd() / 200.0;
-		s_lastEntityID = pc->getUniqueID();
+		s_lastEntityID      = pc->getUniqueID();
 	}
-	
-	bool cloudHasColors = pc->hasColors();
+
+	bool                 cloudHasColors = pc->hasColors();
 	PoissonReconParamDlg prpDlg(m_app->getMainWindow());
 	prpDlg.importColorsCheckBox->setVisible(cloudHasColors);
 	if (s_depthMode)
@@ -341,7 +358,7 @@ void qPoissonRecon::doAction()
 	else
 		prpDlg.resolutionRadioButton->setChecked(true);
 
-	//init dialog with semi-persistent settings
+	// init dialog with semi-persistent settings
 	prpDlg.depthSpinBox->setValue(s_params.depth);
 	prpDlg.resolutionDoubleSpinBox->setValue(s_defaultResolution);
 	prpDlg.samplesPerNodeSpinBox->setValue(s_params.samplesPerNode);
@@ -369,18 +386,18 @@ void qPoissonRecon::doAction()
 	if (!prpDlg.exec())
 		return;
 
-	//set parameters with dialog settings
-	s_depthMode = prpDlg.depthRadioButton->isChecked();
+	// set parameters with dialog settings
+	s_depthMode         = prpDlg.depthRadioButton->isChecked();
 	s_defaultResolution = prpDlg.resolutionDoubleSpinBox->value();
-	
-	s_params.depth = (s_depthMode ? prpDlg.depthSpinBox->value() : 0);
+
+	s_params.depth           = (s_depthMode ? prpDlg.depthSpinBox->value() : 0);
 	s_params.finestCellWidth = static_cast<float>(s_depthMode ? 0.0 : s_defaultResolution);
-	s_params.samplesPerNode = static_cast<float>(prpDlg.samplesPerNodeSpinBox->value());
-	s_params.withColors = prpDlg.importColorsCheckBox->isChecked();
-	s_params.density = prpDlg.densityCheckBox->isChecked();
-	s_params.pointWeight = static_cast<float>(prpDlg.weightDoubleSpinBox->value());
-	s_params.threads = prpDlg.threadSpinBox->value();
-	s_params.linearFit = prpDlg.linearFitCheckBox->isChecked();
+	s_params.samplesPerNode  = static_cast<float>(prpDlg.samplesPerNodeSpinBox->value());
+	s_params.withColors      = prpDlg.importColorsCheckBox->isChecked();
+	s_params.density         = prpDlg.densityCheckBox->isChecked();
+	s_params.pointWeight     = static_cast<float>(prpDlg.weightDoubleSpinBox->value());
+	s_params.threads         = prpDlg.threadSpinBox->value();
+	s_params.linearFit       = prpDlg.linearFitCheckBox->isChecked();
 	switch (prpDlg.boundaryComboBox->currentIndex())
 	{
 	case 0:
@@ -404,22 +421,22 @@ void qPoissonRecon::doAction()
 	assert(s_meshVertices == nullptr);
 
 	ccScalarField* densitySF = nullptr;
-	ccPointCloud* newPC = new ccPointCloud("vertices");
-	ccMesh* newMesh = new ccMesh(newPC);
+	ccPointCloud*  newPC     = new ccPointCloud("vertices");
+	ccMesh*        newMesh   = new ccMesh(newPC);
 	newMesh->addChild(newPC);
 
-	//run in a separate thread
+	// run in a separate thread
 	bool result = false;
 	{
-		//start message
+		// start message
 		m_app->dispToConsole(QString("[PoissonRecon] Job started (level %1 - %2 threads)").arg(s_params.depth).arg(s_params.threads), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 
-		//progress dialog (Qtconcurrent::run can't be canceled!)
+		// progress dialog (Qtconcurrent::run can't be canceled!)
 		QProgressDialog pDlg(tr("Initialization"), QString(), 0, 0, m_app->getMainWindow());
 		pDlg.setWindowTitle("Poisson Reconstruction");
 		pDlg.setCancelButton(nullptr); // it's not possible to cancel PoissonRecon currently
 		pDlg.show();
-		//QApplication::processEvents();
+		// QApplication::processEvents();
 
 		QString progressLabel("Reconstruction in progress\n");
 		if (s_depthMode)
@@ -431,9 +448,9 @@ void qPoissonRecon::doAction()
 		pDlg.setLabelText(progressLabel);
 		QApplication::processEvents();
 
-		//run in a separate thread
-		s_cloud = pc;
-		s_mesh = newMesh;
+		// run in a separate thread
+		s_cloud        = pc;
+		s_mesh         = newMesh;
 		s_meshVertices = newPC;
 
 		if (s_params.density)
@@ -443,7 +460,7 @@ void qPoissonRecon::doAction()
 
 		QFuture<bool> future = QtConcurrent::run(doReconstruct);
 
-		//wait until process is finished!
+		// wait until process is finished!
 		while (!future.isFinished())
 		{
 #if defined(CC_WINDOWS)
@@ -458,8 +475,8 @@ void qPoissonRecon::doAction()
 
 		result = future.result();
 
-		s_cloud = nullptr;
-		s_mesh = nullptr;
+		s_cloud        = nullptr;
+		s_mesh         = nullptr;
 		s_meshVertices = nullptr;
 
 		pDlg.hide();
@@ -478,8 +495,8 @@ void qPoissonRecon::doAction()
 		m_app->dispToConsole("Reconstruction failed!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
-	
-	//success message
+
+	// success message
 	m_app->dispToConsole(QString("[PoissonRecon] Job finished (%1 triangles, %2 vertices)").arg(newMesh->size()).arg(newPC->size()), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 
 	newMesh->setName(QString("Mesh[%1] (level %2)").arg(pc->getName()).arg(s_params.depth));
@@ -504,16 +521,16 @@ void qPoissonRecon::doAction()
 		newMesh->showSF(true);
 	}
 
-	//copy Global Shift & Scale information
+	// copy Global Shift & Scale information
 	newPC->copyGlobalShiftAndScale(*pc);
 
-	//output mesh
+	// output mesh
 	m_app->addToDB(newMesh);
 	m_app->setSelectedInDB(ent, false);
 	m_app->setSelectedInDB(newMesh, true);
 
-	//currently selected entities parameters may have changed!
+	// currently selected entities parameters may have changed!
 	m_app->updateUI();
-	//currently selected entities appearance may have changed!
+	// currently selected entities appearance may have changed!
 	m_app->refreshAll();
 }

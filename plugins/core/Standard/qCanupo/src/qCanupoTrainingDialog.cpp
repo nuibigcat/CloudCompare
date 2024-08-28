@@ -1,48 +1,48 @@
-//##########################################################################
-//#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 or later of the License.      #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #                     CLOUDCOMPARE PLUGIN: qCANUPO                       #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 or later of the License.      #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #      COPYRIGHT: UEB (UNIVERSITE EUROPEENNE DE BRETAGNE) / CNRS         #
+// #                                                                        #
+// ##########################################################################
 
 #include "qCanupoTrainingDialog.h"
 
-//local
-#include "qCanupoTools.h"
+// local
 #include "ccPointDescriptor.h"
+#include "qCanupoTools.h"
 
-//qCC_plugins
+// qCC_plugins
 #include <ccMainAppInterface.h>
 #include <ccQtHelpers.h>
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 
-//Qt
-#include <QSettings>
-#include <QMainWindow>
-#include <QComboBox>
-#include <QPushButton>
+// Qt
 #include <QApplication>
+#include <QComboBox>
+#include <QMainWindow>
+#include <QPushButton>
+#include <QSettings>
 #include <QThread>
 
-//system
+// system
 #include <limits>
 
 qCanupoTrainingDialog::qCanupoTrainingDialog(ccMainAppInterface* app)
-	: QDialog(app ? app->getMainWindow() : nullptr)
-	, Ui::CanupoTrainingDialog()
-	, m_app(app)
+    : QDialog(app ? app->getMainWindow() : nullptr)
+    , Ui::CanupoTrainingDialog()
+    , m_app(app)
 {
 	setupUi(this);
 
@@ -52,43 +52,43 @@ qCanupoTrainingDialog::qCanupoTrainingDialog(ccMainAppInterface* app)
 
 	if (m_app)
 	{
-		//add list of clouds to the combo-boxes
+		// add list of clouds to the combo-boxes
 		ccHObject::Container clouds;
 		if (m_app->dbRootObject())
-			m_app->dbRootObject()->filterChildren(clouds,true,CC_TYPES::POINT_CLOUD);
+			m_app->dbRootObject()->filterChildren(clouds, true, CC_TYPES::POINT_CLOUD);
 
 		unsigned cloudCount = 0;
-		for (size_t i=0; i<clouds.size(); ++i)
+		for (size_t i = 0; i < clouds.size(); ++i)
 		{
-			if (clouds[i]->isA(CC_TYPES::POINT_CLOUD)) //as filterChildren only test 'isKindOf'
+			if (clouds[i]->isA(CC_TYPES::POINT_CLOUD)) // as filterChildren only test 'isKindOf'
 			{
-				QString name = qCanupoTools::GetEntityName(clouds[i]);
+				QString  name = qCanupoTools::GetEntityName(clouds[i]);
 				QVariant uniqueID(clouds[i]->getUniqueID());
-				originCloudComboBox->addItem(name,uniqueID);
-				class1CloudComboBox->addItem(name,uniqueID);
-				class2CloudComboBox->addItem(name,uniqueID);
-				evaluationCloudComboBox->addItem(name,uniqueID);
+				originCloudComboBox->addItem(name, uniqueID);
+				class1CloudComboBox->addItem(name, uniqueID);
+				class2CloudComboBox->addItem(name, uniqueID);
+				evaluationCloudComboBox->addItem(name, uniqueID);
 				++cloudCount;
 			}
 		}
 
-		//if 3 clouds are loaded, then there's chances that the first one is the global  cloud!
+		// if 3 clouds are loaded, then there's chances that the first one is the global  cloud!
 		class1CloudComboBox->setCurrentIndex(cloudCount > 0 ? (cloudCount > 2 ? 1 : 0) : -1);
 		class2CloudComboBox->setCurrentIndex(cloudCount > 1 ? (cloudCount > 2 ? 2 : 1) : -1);
 		originCloudComboBox->setCurrentIndex(cloudCount > 2 ? 0 : -1);
 
 		if (cloudCount < 2 && app)
-			app->dispToConsole("You need at least 2 loaded clouds to train a classifier (one per class)",ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			app->dispToConsole("You need at least 2 loaded clouds to train a classifier (one per class)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 	}
 
-	//add the list of available descriptors
+	// add the list of available descriptors
 	{
 		paramComboBox->clear();
 		unsigned count = ScaleParamsComputer::AvailableCount();
-		for (unsigned i=0; i<count; ++i)
+		for (unsigned i = 0; i < count; ++i)
 		{
 			ScaleParamsComputer* scp = ScaleParamsComputer::GetByIndex(i);
-			paramComboBox->addItem(scp->getName(),scp->getID());
+			paramComboBox->addItem(scp->getName(), scp->getID());
 		}
 	}
 
@@ -96,7 +96,7 @@ qCanupoTrainingDialog::qCanupoTrainingDialog(ccMainAppInterface* app)
 
 	connect(cloud1ClassSpinBox, qOverload<int>(&QSpinBox::valueChanged), this, &qCanupoTrainingDialog::onClassChanged);
 	connect(cloud2ClassSpinBox, qOverload<int>(&QSpinBox::valueChanged), this, &qCanupoTrainingDialog::onClassChanged);
-	
+
 	connect(class1CloudComboBox, qOverload<int>(&QComboBox::currentIndexChanged), this, &qCanupoTrainingDialog::onCloudChanged);
 	connect(class2CloudComboBox, qOverload<int>(&QComboBox::currentIndexChanged), this, &qCanupoTrainingDialog::onCloudChanged);
 
@@ -133,24 +133,24 @@ bool qCanupoTrainingDialog::getScales(std::vector<float>& scales) const
 		if (scalesRampRadioButton->isChecked())
 		{
 			double maxScale = maxScaleDoubleSpinBox->value();
-			double step = stepScaleDoubleSpinBox->value();
-			double minScale	= minScaleDoubleSpinBox->value();
+			double step     = stepScaleDoubleSpinBox->value();
+			double minScale = minScaleDoubleSpinBox->value();
 			if (maxScale < minScale || maxScale < 0 || step < 1.0e-6)
 				return false;
-			unsigned stepCount = static_cast<unsigned>((maxScale - minScale) / step + 1.0e-6) + 1; //static_cast is equivalent to floor if value >= 0
+			unsigned stepCount = static_cast<unsigned>((maxScale - minScale) / step + 1.0e-6) + 1; // static_cast is equivalent to floor if value >= 0
 			scales.resize(stepCount);
-			for (unsigned i=0; i<stepCount; ++i)
-				scales[i] = static_cast<float>(maxScale - i*step);
+			for (unsigned i = 0; i < stepCount; ++i)
+				scales[i] = static_cast<float>(maxScale - i * step);
 		}
 		else if (scalesListRadioButton->isChecked())
 		{
-			QStringList scaleList = scalesListLineEdit->text().split(' ',QString::SkipEmptyParts);
-		
+			QStringList scaleList = scalesListLineEdit->text().split(' ', QString::SkipEmptyParts);
+
 			int listSize = scaleList.size();
 			scales.resize(listSize);
-			for (int i=0; i<listSize; ++i)
+			for (int i = 0; i < listSize; ++i)
 			{
-				bool ok = false;
+				bool  ok = false;
 				float f;
 				f = scaleList[i].toFloat(&ok);
 				if (!ok)
@@ -173,7 +173,7 @@ bool qCanupoTrainingDialog::getScales(std::vector<float>& scales) const
 
 unsigned qCanupoTrainingDialog::getDescriptorID() const
 {
-	//paramComboBox
+	// paramComboBox
 	int currentIndex = paramComboBox->currentIndex();
 	if (currentIndex < 0)
 	{
@@ -196,25 +196,25 @@ void qCanupoTrainingDialog::onCloudChanged(int dummy)
 
 ccPointCloud* qCanupoTrainingDialog::getClass1Cloud()
 {
-	//return the cloud currently selected in the combox box
+	// return the cloud currently selected in the combox box
 	return qCanupoTools::GetCloudFromCombo(class1CloudComboBox, m_app->dbRootObject());
 }
 
 ccPointCloud* qCanupoTrainingDialog::getClass2Cloud()
 {
-	//return the cloud currently selected in the combox box
+	// return the cloud currently selected in the combox box
 	return qCanupoTools::GetCloudFromCombo(class2CloudComboBox, m_app->dbRootObject());
 }
 
 ccPointCloud* qCanupoTrainingDialog::getOriginPointCloud()
 {
-	//return the cloud currently selected in the combox box
+	// return the cloud currently selected in the combox box
 	return useOriginalCloudCheckBox->isChecked() ? qCanupoTools::GetCloudFromCombo(originCloudComboBox, m_app->dbRootObject()) : nullptr;
 }
 
 ccPointCloud* qCanupoTrainingDialog::getEvaluationCloud()
 {
-	//return the cloud currently selected in the combox box
+	// return the cloud currently selected in the combox box
 	return evaluateParamsCheckBox->isChecked() ? qCanupoTools::GetCloudFromCombo(evaluationCloudComboBox, m_app->dbRootObject()) : nullptr;
 }
 
@@ -223,18 +223,18 @@ void qCanupoTrainingDialog::loadParamsFromPersistentSettings()
 	QSettings settings("qCanupo");
 	settings.beginGroup("Training");
 
-	//read out parameters
-	double minScale = settings.value("MinScale",minScaleDoubleSpinBox->value()).toDouble();
-	double step = settings.value("Step",stepScaleDoubleSpinBox->value()).toDouble();
-	double maxScale = settings.value("MaxScale",maxScaleDoubleSpinBox->value()).toDouble();
-	QString scalesList = settings.value("ScalesList",scalesListLineEdit->text()).toString();
-	bool scalesRampEnabled = settings.value("ScalesRampEnabled",scalesRampRadioButton->isChecked()).toBool();
+	// read out parameters
+	double  minScale          = settings.value("MinScale", minScaleDoubleSpinBox->value()).toDouble();
+	double  step              = settings.value("Step", stepScaleDoubleSpinBox->value()).toDouble();
+	double  maxScale          = settings.value("MaxScale", maxScaleDoubleSpinBox->value()).toDouble();
+	QString scalesList        = settings.value("ScalesList", scalesListLineEdit->text()).toString();
+	bool    scalesRampEnabled = settings.value("ScalesRampEnabled", scalesRampRadioButton->isChecked()).toBool();
 
-	unsigned maxPoints = settings.value("MaxPoints",maxPointsSpinBox->value()).toUInt();
-	int classifParam = settings.value("ClassifParam",paramComboBox->currentIndex()).toInt();
-	int maxThreadCount = settings.value("MaxThreadCount", ccQtHelpers::GetMaxThreadCount()).toInt();
+	unsigned maxPoints      = settings.value("MaxPoints", maxPointsSpinBox->value()).toUInt();
+	int      classifParam   = settings.value("ClassifParam", paramComboBox->currentIndex()).toInt();
+	int      maxThreadCount = settings.value("MaxThreadCount", ccQtHelpers::GetMaxThreadCount()).toInt();
 
-	//apply parameters
+	// apply parameters
 
 	minScaleDoubleSpinBox->setValue(minScale);
 	stepScaleDoubleSpinBox->setValue(step);
@@ -255,14 +255,14 @@ void qCanupoTrainingDialog::saveParamsToPersistentSettings()
 	QSettings settings("qCanupo");
 	settings.beginGroup("Training");
 
-	//save parameters
-	settings.setValue("MinScale",minScaleDoubleSpinBox->value());
-	settings.setValue("Step",stepScaleDoubleSpinBox->value());
-	settings.setValue("MaxScale",maxScaleDoubleSpinBox->value());
-	settings.setValue("ScalesList",scalesListLineEdit->text());
-	settings.setValue("ScalesRampEnabled",scalesRampRadioButton->isChecked());
+	// save parameters
+	settings.setValue("MinScale", minScaleDoubleSpinBox->value());
+	settings.setValue("Step", stepScaleDoubleSpinBox->value());
+	settings.setValue("MaxScale", maxScaleDoubleSpinBox->value());
+	settings.setValue("ScalesList", scalesListLineEdit->text());
+	settings.setValue("ScalesRampEnabled", scalesRampRadioButton->isChecked());
 
-	settings.setValue("MaxPoints",maxPointsSpinBox->value());
-	settings.setValue("ClassifParam",paramComboBox->currentIndex());
+	settings.setValue("MaxPoints", maxPointsSpinBox->value());
+	settings.setValue("ClassifParam", paramComboBox->currentIndex());
 	settings.setValue("MaxThreadCount", maxThreadCountSpinBox->value());
 }
