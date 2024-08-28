@@ -6,5 +6,5 @@ class ccGlFilter;
 
 namespace Example
 {
-	ccGlFilter	*getBilateral();
+	ccGlFilter* getBilateral();
 }

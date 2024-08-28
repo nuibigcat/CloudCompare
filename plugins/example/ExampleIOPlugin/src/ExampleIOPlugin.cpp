@@ -1,19 +1,19 @@
-//##########################################################################
-//#                                                                        #
-//#          CLOUDCOMPARE PLUGIN: ExampleIOPlugin                          #
-//#                                                                        #
-//#  This program is free software; you can redistribute it and/or modify  #
-//#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 of the License.               #
-//#                                                                        #
-//#  This program is distributed in the hope that it will be useful,       #
-//#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
-//#  GNU General Public License for more details.                          #
-//#                                                                        #
-//#          COPYRIGHT: CloudCompare project                               #
-//#                                                                        #
-//##########################################################################
+// ##########################################################################
+// #                                                                        #
+// #          CLOUDCOMPARE PLUGIN: ExampleIOPlugin                          #
+// #                                                                        #
+// #  This program is free software; you can redistribute it and/or modify  #
+// #  it under the terms of the GNU General Public License as published by  #
+// #  the Free Software Foundation; version 2 of the License.               #
+// #                                                                        #
+// #  This program is distributed in the hope that it will be useful,       #
+// #  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+// #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+// #  GNU General Public License for more details.                          #
+// #                                                                        #
+// #          COPYRIGHT: CloudCompare project                               #
+// #                                                                        #
+// ##########################################################################
 
 // First:
 //	Replace all occurrences of 'ExampleIOPlugin' by your own plugin class name in this file.
@@ -35,17 +35,16 @@
 
 #include "FooFilter.h"
 
-
-ExampleIOPlugin::ExampleIOPlugin( QObject* parent )
-    : QObject( parent )
-    , ccIOPluginInterface( ":/CC/plugin/ExampleIOPlugin/info.json" )
+ExampleIOPlugin::ExampleIOPlugin(QObject* parent)
+    : QObject(parent)
+    , ccIOPluginInterface(":/CC/plugin/ExampleIOPlugin/info.json")
 {
 }
 
-void ExampleIOPlugin::registerCommands( ccCommandLineInterface *cmd )
+void ExampleIOPlugin::registerCommands(ccCommandLineInterface* cmd)
 {
-	Q_UNUSED( cmd );
-	
+	Q_UNUSED(cmd);
+
 	// If you want to register this plugin for the command line, create a
 	// ccCommandLineInterface::Command and add it here. e.g.:
 	//
@@ -55,6 +54,6 @@ void ExampleIOPlugin::registerCommands( ccCommandLineInterface *cmd )
 ccIOPluginInterface::FilterList ExampleIOPlugin::getFilters()
 {
 	return {
-		FileIOFilter::Shared( new FooFilter ),
+	    FileIOFilter::Shared(new FooFilter),
 	};
 }
